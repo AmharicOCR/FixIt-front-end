@@ -27,7 +27,7 @@ export default function AdminLoginPage() {
 
       // For demo purposes, we'll redirect to an admin dashboard
       // In a real app, you would validate credentials and only redirect if valid
-      window.location.href = "/dashboard"
+      window.location.href = "/admin"
     }, 1500)
   }
 
