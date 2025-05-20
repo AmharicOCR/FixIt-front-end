@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import Link from "next/link"
 import { useState } from "react"
 import { Eye, EyeOff, Bug, Github, ArrowRight } from "lucide-react"
@@ -14,16 +13,69 @@ import { Separator } from "@/components/ui/separator"
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
+    setErrors({})
 
-    // Simulate authentication - this would be replaced with actual authentication logic
-    setTimeout(() => {
-      setIsLoading(false)
+    const form = e.currentTarget as HTMLFormElement
+    const formData = new FormData(form)
+    
+    const loginData = {
+      email: formData.get("email") as string,
+      password: formData.get("password") as string
+    }
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/user/login/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(loginData),
+        credentials: 'include' // Include cookies if using session-based auth
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        // Handle different error response formats
+        if (data.detail) {
+          // If error is in 'detail' field (common in DRF)
+          throw new Error(data.detail)
+        } else if (data.message) {
+          // If error is in 'message' field
+          throw new Error(data.message)
+        } else if (data.non_field_errors) {
+          // If there are non-field errors
+          throw new Error(data.non_field_errors.join(', '))
+        } else if (typeof data === 'object') {
+          // Handle field-specific errors
+          const fieldErrors: Record<string, string> = {}
+          Object.entries(data).forEach(([field, error]) => {
+            if (Array.isArray(error)) {
+              fieldErrors[field] = error.join(', ')
+            } else if (typeof error === 'string') {
+              fieldErrors[field] = error
+            }
+          })
+          setErrors(fieldErrors)
+          throw new Error('Please fix the errors below')
+        } else {
+          throw new Error('Login failed')
+        }
+      }
+
+      // Login successful - redirect to dashboard
       window.location.href = "/dashboard"
-    }, 1500)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unknown error occurred")
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -41,11 +93,35 @@ export default function LoginPage() {
           <CardDescription>Sign in to your account to log and resolve code errors.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {error && (
+            <div className="p-4 text-sm text-red-600 bg-red-50 rounded-lg">
+              <div className="font-medium">There was a problem with your login:</div>
+              <div className="mt-1">{error}</div>
+              {Object.entries(errors).length > 0 && (
+                <ul className="mt-2 list-disc list-inside">
+                  {Object.entries(errors).map(([field, message]) => (
+                    <li key={field}>{message}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="name@example.com" required />
+                <Input 
+                  id="email" 
+                  name="email" 
+                  type="email" 
+                  placeholder="name@example.com" 
+                  required 
+                  className={errors.email ? 'border-red-500' : ''}
+                />
+                {errors.email && (
+                  <p className="text-xs text-red-500">{errors.email}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -55,7 +131,14 @@ export default function LoginPage() {
                   </Link>
                 </div>
                 <div className="relative">
-                  <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" required />
+                  <Input 
+                    id="password" 
+                    name="password"
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="••••••••" 
+                    required 
+                    className={errors.password ? 'border-red-500' : ''}
+                  />
                   <Button
                     type="button"
                     variant="ghost"
@@ -67,6 +150,9 @@ export default function LoginPage() {
                     <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
                   </Button>
                 </div>
+                {errors.password && (
+                  <p className="text-xs text-red-500">{errors.password}</p>
+                )}
               </div>
               <Button type="submit" className="w-full rounded-full" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign In"}
