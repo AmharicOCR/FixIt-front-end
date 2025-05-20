@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import Link from "next/link"
 import { useState } from "react"
 import { Eye, EyeOff, Bug, Github, ArrowRight } from "lucide-react"
@@ -16,17 +15,64 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [accountType, setAccountType] = useState("free")
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  setIsLoading(true)
+  setError(null)
 
-    // Simulate account creation - this would be replaced with actual signup logic
-    setTimeout(() => {
-      setIsLoading(false)
-      window.location.href = "/dashboard"
-    }, 1500)
+  const form = e.currentTarget as HTMLFormElement
+  const formData = new FormData(form)
+  
+  const userData = {
+    username: formData.get("username") as string,
+    email: formData.get("email") as string,
+    password: formData.get("password") as string,
+    first_name: formData.get("first-name") as string,
+    last_name: formData.get("last-name") as string,
+    accountType: accountType === "free" ? "Free" : "Team"
   }
+
+  try {
+    const response = await fetch("http://127.0.0.1:8000/user/register/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(userData),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      // Handle different error response formats
+      if (data.detail) {
+        // If error is in 'detail' field (common in DRF)
+        throw new Error(data.detail)
+      } else if (data.message) {
+        // If error is in 'message' field
+        throw new Error(data.message)
+      } else if (data.non_field_errors) {
+        // If there are non-field errors
+        throw new Error(data.non_field_errors.join(', '))
+      } else if (typeof data === 'object') {
+        // Handle field-specific errors
+        const fieldErrors = Object.entries(data)
+          .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+          .join('\n')
+        throw new Error(fieldErrors)
+      } else {
+        throw new Error('Registration failed')
+      }
+    }
+
+    window.location.href = "/dashboard"
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "An unknown error occurred")
+    setIsLoading(false)
+  }
+}
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center p-4 bg-muted/30">
@@ -43,33 +89,45 @@ export default function SignupPage() {
           <CardDescription>Get started with FixIt to log and resolve code errors efficiently.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {error && (
+            <div className="p-4 text-sm text-red-600 bg-red-50 rounded-lg">
+              {error}
+            </div>
+          )}
+          
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="first-name">First Name</Label>
-                  <Input id="first-name" placeholder="John" required />
+                  <Input id="first-name" name="first-name" placeholder="John" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="last-name">Last Name</Label>
-                  <Input id="last-name" placeholder="Doe" required />
+                  <Input id="last-name" name="last-name" placeholder="Doe" required />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="name@example.com" required />
+                <Input id="email" name="email" type="email" placeholder="name@example.com" required />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
-                <Input id="username" placeholder="johndoe" required />
+                <Input id="username" name="username" placeholder="johndoe" required />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
-                  <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" required />
+                  <Input 
+                    id="password" 
+                    name="password"
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="••••••••" 
+                    required 
+                  />
                   <Button
                     type="button"
                     variant="ghost"
