@@ -172,7 +172,8 @@ export default function DashboardPage() {
                   {[40, 25, 60, 42, 38, 65, 55].map((height, index) => (
                     <div
                       key={index}
-                      className="flex-1 space-y-2 flex flex-col items-center justify-end"
+                      // Add h-full here
+                      className="flex-1 space-y-2 flex flex-col items-center justify-end h-full"
                     >
                       <div
                         className="w-full rounded-md bg-primary/80 transition-all hover:bg-primary relative group"
@@ -202,6 +203,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </CardContent>
+
             </Card>
 
             {/* Error Categories */}
