@@ -106,9 +106,9 @@ export default function LandingPage() {
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2 font-bold">
             <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
-              <Bug className="size-5" />
+            <Link href = "/"><Bug className="size-5" /></Link>
             </div>
-            <span>FixIt</span>
+            <Link href = "/"><span>FixIt</span></Link>
           </div>
           <nav className="hidden md:flex gap-8">
             <Link
