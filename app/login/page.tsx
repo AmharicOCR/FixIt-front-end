@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import Cookies from 'js-cookie';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -71,12 +72,22 @@ export default function LoginPage() {
       }
 
       // Login successful - redirect to dashboard
-      window.location.href = "/dashboard"
+      window.location.href = "/dashboard/settings"
+      // console.log(getCookie('csrftoken'))
+      // console.log(document.cookie);
+//       const csrfToken = Cookies.get();
+// console.log('CSRF Token:', csrfToken);
+// console.log(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred")
       setIsLoading(false)
     }
   }
+    function getCookie(name: string) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()!.split(';').shift();
+}
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center p-4 bg-muted/30">

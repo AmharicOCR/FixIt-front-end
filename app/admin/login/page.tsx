@@ -28,8 +28,10 @@ export default function AdminLoginPage() {
       // For demo purposes, we'll redirect to an admin dashboard
       // In a real app, you would validate credentials and only redirect if valid
       window.location.href = "/admin"
+      // console.log(getCookie('csrftoken'))
     }, 1500)
   }
+
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center p-4 bg-muted/30">
