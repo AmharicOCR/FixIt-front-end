@@ -59,11 +59,16 @@ export default function SettingsPage() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/user/edit-profile/", {
+        const csrftoken = getCookie('csrftoken')
+        if (!csrftoken) {
+        throw new Error("CSRF token not found")
+      }
+        const response = await fetch("http://127.0.0.1:8000/user/profile/", {
           method: "GET",
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
           },
         })
 
@@ -94,7 +99,7 @@ export default function SettingsPage() {
       }
     }
 
-    // fetchUserData()
+    fetchUserData()
   }, [])
 
   useEffect(() => {
