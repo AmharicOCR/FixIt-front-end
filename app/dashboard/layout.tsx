@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import Link from "next/link"
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Bug,
   LayoutDashboard,
@@ -19,9 +19,9 @@ import {
   Moon,
   HelpCircle,
   ChevronDown,
-} from "lucide-react"
-import { useTheme } from "next-themes"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+} from "lucide-react";
+import { useTheme } from "next-themes";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,10 +29,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
-import { useSearchParams, usePathname } from "next/navigation"
-import { Suspense } from "react"
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+import { useSearchParams, usePathname } from "next/navigation";
+import { Suspense } from "react";
 // Remove the SocketProvider import:
 // import { SocketProvider } from "@/contexts/socket-context"
 
@@ -45,21 +45,22 @@ import { Suspense } from "react"
 export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  const searchParams = useSearchParams()
-  const pathname = usePathname()
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const user = { accountType: "premium" };
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark")
-  }
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
 
   const NavItem = ({
     href,
@@ -68,24 +69,26 @@ export default function DashboardLayout({
     active = false,
     onClick,
   }: {
-    href: string
-    icon: React.ElementType
-    children: React.ReactNode
-    active?: boolean
-    onClick?: () => void
+    href: string;
+    icon: React.ElementType;
+    children: React.ReactNode;
+    active?: boolean;
+    onClick?: () => void;
   }) => (
     <Link
       href={href}
       className={cn(
         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-muted",
-        active ? "bg-muted font-medium text-foreground" : "text-muted-foreground",
+        active
+          ? "bg-muted font-medium text-foreground"
+          : "text-muted-foreground"
       )}
       onClick={onClick}
     >
       <Icon className="h-4 w-4" />
       <span>{children}</span>
     </Link>
-  )
+  );
 
   return (
     <div className="flex min-h-[100dvh] flex-col">
@@ -107,7 +110,10 @@ export default function DashboardLayout({
             <Menu className="h-6 w-6" />
             <span className="sr-only">Toggle Menu</span>
           </Button>
-          <Link href="/" className="ml-2 flex items-center gap-2 font-bold lg:ml-0">
+          <Link
+            href="/"
+            className="ml-2 flex items-center gap-2 font-bold lg:ml-0"
+          >
             <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
               <Bug className="size-5" />
             </div>
@@ -161,19 +167,23 @@ export default function DashboardLayout({
         <div
           className={cn(
             "fixed inset-0 top-16 z-40 bg-background/80 backdrop-blur-sm lg:hidden",
-            sidebarOpen ? "block" : "hidden",
+            sidebarOpen ? "block" : "hidden"
           )}
           onClick={() => setSidebarOpen(false)}
         />
         <div
           className={cn(
             "fixed top-16 bottom-0 left-0 z-40 w-64 border-r bg-background transition-transform lg:hidden",
-            sidebarOpen ? "translate-x-0" : "-translate-x-full",
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
           <div className="flex h-full flex-col py-4">
             <div className="px-4 py-2">
-              <Button variant="outline" className="w-full justify-start" asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                asChild
+              >
                 <Link href="/dashboard/new-error">
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Log New Error
@@ -206,14 +216,17 @@ export default function DashboardLayout({
                 >
                   My Errors
                 </NavItem>
-                <NavItem
-                  href="/dashboard/teams"
-                  icon={Users}
-                  active={pathname?.startsWith("/dashboard/teams")}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  Teams
-                </NavItem>
+                {user.accountType === "premium" && (
+                  <NavItem
+                    href="/dashboard/teams"
+                    icon={Users}
+                    active={pathname?.startsWith("/dashboard/teams")}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    Teams
+                  </NavItem>
+                )}
+
                 <NavItem
                   href="/dashboard/reports"
                   icon={BarChart2}
@@ -226,10 +239,18 @@ export default function DashboardLayout({
             </div>
             <div className="border-t px-2 py-4">
               <nav className="grid gap-1">
-                <NavItem href="/dashboard/settings" icon={Settings} onClick={() => setSidebarOpen(false)}>
+                <NavItem
+                  href="/dashboard/settings"
+                  icon={Settings}
+                  onClick={() => setSidebarOpen(false)}
+                >
                   Settings
                 </NavItem>
-                <NavItem href="/dashboard/help" icon={HelpCircle} onClick={() => setSidebarOpen(false)}>
+                <NavItem
+                  href="/dashboard/help"
+                  icon={HelpCircle}
+                  onClick={() => setSidebarOpen(false)}
+                >
                   Help & Support
                 </NavItem>
               </nav>
@@ -239,15 +260,26 @@ export default function DashboardLayout({
 
         <div className="flex flex-1">
           {/* Desktop Sidebar */}
-          <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r bg-background">
-            <div className="px-6 py-5 flex items-center gap-2 font-bold border-b">
+          <aside
+            className="hidden lg:flex w-64 shrink-0 flex-col border-r bg-background h-screen sticky top-0" // Ensures full height and sticks to top
+          >
+            {/* 1. Logo Section - Fixed Height, does not shrink */}
+            <div className="px-6 py-5 flex items-center gap-2 font-bold border-b shrink-0">
               <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
                 <Bug className="size-5" />
               </div>
               <span>FixIt</span>
             </div>
-            <div className="flex h-full flex-col py-4">
-              <div className="px-4 py-2">
+
+            {/* 2. Container for the rest of the sidebar (button, scrollable nav, bottom fixed section) */}
+            {/* This container will take the remaining height and manage its children's layout */}
+            <div className="flex flex-1 flex-col overflow-hidden">
+              {" "}
+              {/* flex-1 to take space, overflow-hidden to clip its own overflow */}
+              {/* Log New Error Button - Fixed Height, does not shrink */}
+              <div className="px-4 py-4 shrink-0">
+                {" "}
+                {/* Added py-4 for consistent spacing */}
                 <Button className="w-full justify-start rounded-lg" asChild>
                   <Link href="/dashboard/new-error">
                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -255,20 +287,42 @@ export default function DashboardLayout({
                   </Link>
                 </Button>
               </div>
-              <div className="flex-1 overflow-auto py-2">
+              {/* Scrollable Navigation Links - Takes available space and scrolls if needed */}
+              <div className="flex-1 overflow-y-auto py-2">
+                {" "}
+                {/* flex-1 to grow, overflow-y-auto for scrolling */}
                 <nav className="grid gap-1 px-2">
-                  <NavItem href="/dashboard" icon={LayoutDashboard} active={pathname === "/dashboard"}>
+                  <NavItem
+                    href="/dashboard"
+                    icon={LayoutDashboard}
+                    active={pathname === "/dashboard"}
+                  >
                     Dashboard
                   </NavItem>
-                  <NavItem href="/dashboard/search" icon={Search} active={pathname?.startsWith("/dashboard/search")}>
+                  <NavItem
+                    href="/dashboard/search"
+                    icon={Search}
+                    active={pathname?.startsWith("/dashboard/search")}
+                  >
                     Search Errors
                   </NavItem>
-                  <NavItem href="/dashboard/my-errors" icon={Bug} active={pathname?.startsWith("/dashboard/my-errors")}>
+                  <NavItem
+                    href="/dashboard/my-errors"
+                    icon={Bug}
+                    active={pathname?.startsWith("/dashboard/my-errors")}
+                  >
                     My Errors
                   </NavItem>
-                  <NavItem href="/dashboard/teams" icon={Users} active={pathname?.startsWith("/dashboard/teams")}>
-                    Teams
-                  </NavItem>
+                  {/* Ensure 'user' or 'currentUser' is correctly referenced here */}
+                  {user.accountType === "premium" && (
+                    <NavItem
+                      href="/dashboard/teams"
+                      icon={Users}
+                      active={pathname?.startsWith("/dashboard/teams")}
+                    >
+                      Teams
+                    </NavItem>
+                  )}
                   <NavItem
                     href="/dashboard/reports"
                     icon={BarChart2}
@@ -276,9 +330,11 @@ export default function DashboardLayout({
                   >
                     Reports
                   </NavItem>
+                  {/* Add more NavItems here to test scrolling if needed */}
                 </nav>
               </div>
-              <div className="border-t px-2 py-4">
+              {/* Bottom Fixed Section (Settings, Help, Profile) - Fixed Height, does not shrink */}
+              <div className="border-t px-2 py-4 shrink-0">
                 <nav className="grid gap-1">
                   <NavItem href="/dashboard/settings" icon={Settings}>
                     Settings
@@ -292,17 +348,20 @@ export default function DashboardLayout({
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="w-full justify-start">
                         <Avatar className="mr-2 h-6 w-6">
-                          <AvatarImage src="/placeholder.svg" alt="User" />
-                          <AvatarFallback>JD</AvatarFallback>
+                          <AvatarImage
+                            src={user.avatarUrl || "/placeholder.svg"}
+                            alt={user.name}
+                          />
+                          <AvatarFallback>{user.initials}</AvatarFallback>
                         </Avatar>
-                        <span>John Doe</span>
+                        <span>{user.name}</span>
                         <ChevronDown className="ml-auto h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-56">
-                      <DropdownMenuLabel>John Doe</DropdownMenuLabel>
-                      <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">
-                        john.doe@example.com
+                      <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
+                      <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                        {user.email}
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
@@ -345,19 +404,36 @@ export default function DashboardLayout({
               <nav className="flex-1">
                 <form className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <input type="search" placeholder="Search errors..." className="w-full max-w-sm rounded-lg pl-8" />
+                  <input
+                    type="search"
+                    placeholder="Search errors..."
+                    className="w-full max-w-sm rounded-lg pl-8"
+                  />
                 </form>
               </nav>
               <div className="flex items-center gap-4">
                 {/* Replace this in the desktop header */}
                 {/* <NotificationBell /> */}
-                <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full">
-                  {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleTheme}
+                  className="rounded-full"
+                >
+                  {mounted && theme === "dark" ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
                   <span className="sr-only">Toggle theme</span>
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full"
+                    >
                       <Avatar className="h-8 w-8">
                         <AvatarImage src="/placeholder.svg" alt="User" />
                         <AvatarFallback>JD</AvatarFallback>
@@ -396,5 +472,5 @@ export default function DashboardLayout({
       {/* </NotificationProvider> */}
       {/* </SocketProvider> */}
     </div>
-  )
+  );
 }

@@ -97,7 +97,9 @@ export default function LoginPage() {
         <CardHeader className="space-y-2 text-center">
           <div className="flex justify-center mb-2">
             <div className="size-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
+            <Link href = "/">
               <Bug className="size-6" />
+            </Link>
             </div>
           </div>
           <CardTitle className="text-2xl font-bold">Welcome to FixIt</CardTitle>

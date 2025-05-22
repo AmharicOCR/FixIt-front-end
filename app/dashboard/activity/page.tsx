@@ -1,23 +1,40 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Bug, Calendar, CheckCircle2, Clock, Filter, MessageSquare, ThumbsUp, User, Users } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Separator } from "@/components/ui/separator"
+import { useState } from "react";
+import Link from "next/link";
+import {
+  Bug,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Filter,
+  MessageSquare,
+  ThumbsUp,
+  User,
+  Users,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 
 export default function ActivityPage() {
-  const [dateRange, setDateRange] = useState("7days")
-  const [activityType, setActivityType] = useState("all")
-  const [showFilters, setShowFilters] = useState(false)
+  const [dateRange, setDateRange] = useState("7days");
+  const [activityType, setActivityType] = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const user = { accountType: "premium" };
 
   // Mock activity data
   const activities = [
@@ -194,56 +211,57 @@ export default function ActivityPage() {
         status: "Open",
       },
     },
-  ]
+  ];
 
   // Filter activities based on selected filters
   const filteredActivities = activities.filter((activity) => {
     if (activityType !== "all" && !activity.type.includes(activityType)) {
-      return false
+      return false;
     }
 
     // Date filtering would be implemented here in a real app
-    return true
-  })
+    return true;
+  });
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+    const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    })
-  }
+    });
+  };
 
   const getActivityIcon = (type: string) => {
     switch (true) {
       case type.includes("error_created"):
-        return <Bug className="h-5 w-5 text-primary" />
+        return <Bug className="h-5 w-5 text-primary" />;
       case type.includes("comment"):
-        return <MessageSquare className="h-5 w-5 text-blue-500" />
+        return <MessageSquare className="h-5 w-5 text-blue-500" />;
       case type.includes("solution"):
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />
+        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
       case type.includes("status"):
-        return <Clock className="h-5 w-5 text-amber-500" />
+        return <Clock className="h-5 w-5 text-amber-500" />;
       case type.includes("assigned"):
-        return <User className="h-5 w-5 text-purple-500" />
+        return <User className="h-5 w-5 text-purple-500" />;
       case type.includes("team"):
-        return <Users className="h-5 w-5 text-indigo-500" />
+        return <Users className="h-5 w-5 text-indigo-500" />;
       case type.includes("upvoted"):
-        return <ThumbsUp className="h-5 w-5 text-pink-500" />
+        return <ThumbsUp className="h-5 w-5 text-pink-500" />;
       default:
-        return <Calendar className="h-5 w-5 text-gray-500" />
+        return <Calendar className="h-5 w-5 text-gray-500" />;
     }
-  }
+  };
 
   const getActivityDescription = (activity: any) => {
     switch (activity.type) {
       case "error_created":
         return (
           <>
-            <span className="font-medium">{activity.user.name}</span> created a new error{" "}
+            <span className="font-medium">{activity.user.name}</span> created a
+            new error{" "}
             <Link
               href={`/dashboard/error-details/${activity.error.id}`}
               className="font-medium text-primary hover:underline"
@@ -251,20 +269,23 @@ export default function ActivityPage() {
               {activity.error.title}
             </Link>
           </>
-        )
+        );
       case "comment_added":
         return (
           <>
-            <span className="font-medium">{activity.user.name}</span> commented on{" "}
+            <span className="font-medium">{activity.user.name}</span> commented
+            on{" "}
             <Link
               href={`/dashboard/error-details/${activity.error.id}`}
               className="font-medium text-primary hover:underline"
             >
               {activity.error.title}
             </Link>
-            <p className="mt-1 text-sm text-muted-foreground">"{activity.comment.substring(0, 100)}..."</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              "{activity.comment.substring(0, 100)}..."
+            </p>
           </>
-        )
+        );
       case "error_assigned":
         return (
           <>
@@ -277,11 +298,12 @@ export default function ActivityPage() {
             </Link>{" "}
             to <span className="font-medium">{activity.assignee.name}</span>
           </>
-        )
+        );
       case "status_changed":
         return (
           <>
-            <span className="font-medium">{activity.user.name}</span> changed the status of{" "}
+            <span className="font-medium">{activity.user.name}</span> changed
+            the status of{" "}
             <Link
               href={`/dashboard/error-details/${activity.error.id}`}
               className="font-medium text-primary hover:underline"
@@ -297,25 +319,30 @@ export default function ActivityPage() {
               {activity.newStatus}
             </Badge>
           </>
-        )
+        );
       case "solution_added":
         return (
           <>
-            <span className="font-medium">{activity.user.name}</span> proposed a solution for{" "}
+            <span className="font-medium">{activity.user.name}</span> proposed a
+            solution for{" "}
             <Link
               href={`/dashboard/error-details/${activity.error.id}`}
               className="font-medium text-primary hover:underline"
             >
               {activity.error.title}
             </Link>
-            <p className="mt-1 text-sm text-muted-foreground">Solution: {activity.solution.title}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Solution: {activity.solution.title}
+            </p>
           </>
-        )
+        );
       case "solution_upvoted":
         return (
           <>
-            <span className="font-medium">{activity.user.name}</span> upvoted a solution by{" "}
-            <span className="font-medium">{activity.solution.author.name}</span> for{" "}
+            <span className="font-medium">{activity.user.name}</span> upvoted a
+            solution by{" "}
+            <span className="font-medium">{activity.solution.author.name}</span>{" "}
+            for{" "}
             <Link
               href={`/dashboard/error-details/${activity.error.id}`}
               className="font-medium text-primary hover:underline"
@@ -323,25 +350,27 @@ export default function ActivityPage() {
               {activity.error.title}
             </Link>
           </>
-        )
+        );
       case "team_joined":
         return (
           <>
-            <span className="font-medium">{activity.user.name}</span> joined the team{" "}
-            <span className="font-medium">{activity.team.name}</span>
+            <span className="font-medium">{activity.user.name}</span> joined the
+            team <span className="font-medium">{activity.team.name}</span>
           </>
-        )
+        );
       default:
-        return <span>Unknown activity</span>
+        return <span>Unknown activity</span>;
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Activity Log</h1>
-          <p className="text-muted-foreground">Track all activity across your errors and teams</p>
+          <p className="text-muted-foreground">
+            Track all activity across your errors and teams
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -373,7 +402,9 @@ export default function ActivityPage() {
         <div className={`md:block ${showFilters ? "block" : "hidden"}`}>
           <Card className="border-border/40 shadow-sm sticky top-6">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-medium">Filter Activity</CardTitle>
+              <CardTitle className="text-base font-medium">
+                Filter Activity
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -399,14 +430,23 @@ export default function ActivityPage() {
               <div className="space-y-2">
                 <Label>Filter by User</Label>
                 <div className="space-y-2">
-                  {["John Assefa", "Netsanet Alemu", "Abiy Shiferaw"].map((user) => (
-                    <div key={user} className="flex items-center space-x-2">
-                      <Checkbox id={`user-${user.replace(" ", "-").toLowerCase()}`} />
-                      <Label htmlFor={`user-${user.replace(" ", "-").toLowerCase()}`} className="text-sm font-normal">
-                        {user}
-                      </Label>
-                    </div>
-                  ))}
+                  {["John Assefa", "Netsanet Alemu", "Abiy Shiferaw"].map(
+                    (user) => (
+                      <div key={user} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`user-${user.replace(" ", "-").toLowerCase()}`}
+                        />
+                        <Label
+                          htmlFor={`user-${user
+                            .replace(" ", "-")
+                            .toLowerCase()}`}
+                          className="text-sm font-normal"
+                        >
+                          {user}
+                        </Label>
+                      </div>
+                    )
+                  )}
                 </div>
               </div>
 
@@ -415,14 +455,23 @@ export default function ActivityPage() {
               <div className="space-y-2">
                 <Label>Filter by Team</Label>
                 <div className="space-y-2">
-                  {["Frontend Team", "Backend Team", "DevOps Team"].map((team) => (
-                    <div key={team} className="flex items-center space-x-2">
-                      <Checkbox id={`team-${team.replace(" ", "-").toLowerCase()}`} />
-                      <Label htmlFor={`team-${team.replace(" ", "-").toLowerCase()}`} className="text-sm font-normal">
-                        {team}
-                      </Label>
-                    </div>
-                  ))}
+                  {["Frontend Team", "Backend Team", "DevOps Team"].map(
+                    (team) => (
+                      <div key={team} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`team-${team.replace(" ", "-").toLowerCase()}`}
+                        />
+                        <Label
+                          htmlFor={`team-${team
+                            .replace(" ", "-")
+                            .toLowerCase()}`}
+                          className="text-sm font-normal"
+                        >
+                          {team}
+                        </Label>
+                      </div>
+                    )
+                  )}
                 </div>
               </div>
 
@@ -443,11 +492,17 @@ export default function ActivityPage() {
         {/* Activity Feed */}
         <div className="md:col-span-3 space-y-4">
           <Tabs defaultValue="all" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 rounded-lg">
+            <TabsList
+              className={`grid w-full rounded-lg ${
+                user.accountType === "premium" ? "grid-cols-4" : "grid-cols-3"
+              }`}
+            >
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="errors">Errors</TabsTrigger>
               <TabsTrigger value="solutions">Solutions</TabsTrigger>
-              <TabsTrigger value="team">Team</TabsTrigger>
+              {user.accountType === "premium" && (
+                <TabsTrigger value="team">Team</TabsTrigger>
+              )}
             </TabsList>
             <TabsContent value="all" className="mt-4">
               <Card className="border-border/40 shadow-sm">
@@ -455,20 +510,32 @@ export default function ActivityPage() {
                   <div className="divide-y">
                     {filteredActivities.length > 0 ? (
                       filteredActivities.map((activity) => (
-                        <div key={activity.id} className="flex gap-4 p-4 hover:bg-muted/50">
+                        <div
+                          key={activity.id}
+                          className="flex gap-4 p-4 hover:bg-muted/50"
+                        >
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
                             {getActivityIcon(activity.type)}
                           </div>
                           <div className="flex-1 space-y-1">
-                            <div className="text-sm">{getActivityDescription(activity)}</div>
+                            <div className="text-sm">
+                              {getActivityDescription(activity)}
+                            </div>
                             <div className="flex items-center text-xs text-muted-foreground">
-                              <time dateTime={activity.timestamp}>{formatDate(activity.timestamp)}</time>
+                              <time dateTime={activity.timestamp}>
+                                {formatDate(activity.timestamp)}
+                              </time>
                             </div>
                           </div>
                           <div className="shrink-0">
                             <Avatar className="h-8 w-8">
-                              <AvatarImage src={activity.user.avatar || "/placeholder.svg"} alt={activity.user.name} />
-                              <AvatarFallback>{activity.user.initials}</AvatarFallback>
+                              <AvatarImage
+                                src={activity.user.avatar || "/placeholder.svg"}
+                                alt={activity.user.name}
+                              />
+                              <AvatarFallback>
+                                {activity.user.initials}
+                              </AvatarFallback>
                             </Avatar>
                           </div>
                         </div>
@@ -476,10 +543,12 @@ export default function ActivityPage() {
                     ) : (
                       <div className="flex flex-col items-center justify-center py-12">
                         <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-medium mb-2">No activities found</h3>
+                        <h3 className="text-lg font-medium mb-2">
+                          No activities found
+                        </h3>
                         <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
-                          There are no activities matching your current filters. Try adjusting your filters or date
-                          range.
+                          There are no activities matching your current filters.
+                          Try adjusting your filters or date range.
                         </p>
                       </div>
                     )}
@@ -492,22 +561,38 @@ export default function ActivityPage() {
                 <CardContent className="p-0">
                   <div className="divide-y">
                     {filteredActivities
-                      .filter((activity) => activity.type.includes("error") || activity.type.includes("status"))
+                      .filter(
+                        (activity) =>
+                          activity.type.includes("error") ||
+                          activity.type.includes("status")
+                      )
                       .map((activity) => (
-                        <div key={activity.id} className="flex gap-4 p-4 hover:bg-muted/50">
+                        <div
+                          key={activity.id}
+                          className="flex gap-4 p-4 hover:bg-muted/50"
+                        >
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
                             {getActivityIcon(activity.type)}
                           </div>
                           <div className="flex-1 space-y-1">
-                            <div className="text-sm">{getActivityDescription(activity)}</div>
+                            <div className="text-sm">
+                              {getActivityDescription(activity)}
+                            </div>
                             <div className="flex items-center text-xs text-muted-foreground">
-                              <time dateTime={activity.timestamp}>{formatDate(activity.timestamp)}</time>
+                              <time dateTime={activity.timestamp}>
+                                {formatDate(activity.timestamp)}
+                              </time>
                             </div>
                           </div>
                           <div className="shrink-0">
                             <Avatar className="h-8 w-8">
-                              <AvatarImage src={activity.user.avatar || "/placeholder.svg"} alt={activity.user.name} />
-                              <AvatarFallback>{activity.user.initials}</AvatarFallback>
+                              <AvatarImage
+                                src={activity.user.avatar || "/placeholder.svg"}
+                                alt={activity.user.name}
+                              />
+                              <AvatarFallback>
+                                {activity.user.initials}
+                              </AvatarFallback>
                             </Avatar>
                           </div>
                         </div>
@@ -523,20 +608,32 @@ export default function ActivityPage() {
                     {filteredActivities
                       .filter((activity) => activity.type.includes("solution"))
                       .map((activity) => (
-                        <div key={activity.id} className="flex gap-4 p-4 hover:bg-muted/50">
+                        <div
+                          key={activity.id}
+                          className="flex gap-4 p-4 hover:bg-muted/50"
+                        >
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
                             {getActivityIcon(activity.type)}
                           </div>
                           <div className="flex-1 space-y-1">
-                            <div className="text-sm">{getActivityDescription(activity)}</div>
+                            <div className="text-sm">
+                              {getActivityDescription(activity)}
+                            </div>
                             <div className="flex items-center text-xs text-muted-foreground">
-                              <time dateTime={activity.timestamp}>{formatDate(activity.timestamp)}</time>
+                              <time dateTime={activity.timestamp}>
+                                {formatDate(activity.timestamp)}
+                              </time>
                             </div>
                           </div>
                           <div className="shrink-0">
                             <Avatar className="h-8 w-8">
-                              <AvatarImage src={activity.user.avatar || "/placeholder.svg"} alt={activity.user.name} />
-                              <AvatarFallback>{activity.user.initials}</AvatarFallback>
+                              <AvatarImage
+                                src={activity.user.avatar || "/placeholder.svg"}
+                                alt={activity.user.name}
+                              />
+                              <AvatarFallback>
+                                {activity.user.initials}
+                              </AvatarFallback>
                             </Avatar>
                           </div>
                         </div>
@@ -550,22 +647,38 @@ export default function ActivityPage() {
                 <CardContent className="p-0">
                   <div className="divide-y">
                     {filteredActivities
-                      .filter((activity) => activity.type.includes("team") || activity.type.includes("assigned"))
+                      .filter(
+                        (activity) =>
+                          activity.type.includes("team") ||
+                          activity.type.includes("assigned")
+                      )
                       .map((activity) => (
-                        <div key={activity.id} className="flex gap-4 p-4 hover:bg-muted/50">
+                        <div
+                          key={activity.id}
+                          className="flex gap-4 p-4 hover:bg-muted/50"
+                        >
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
                             {getActivityIcon(activity.type)}
                           </div>
                           <div className="flex-1 space-y-1">
-                            <div className="text-sm">{getActivityDescription(activity)}</div>
+                            <div className="text-sm">
+                              {getActivityDescription(activity)}
+                            </div>
                             <div className="flex items-center text-xs text-muted-foreground">
-                              <time dateTime={activity.timestamp}>{formatDate(activity.timestamp)}</time>
+                              <time dateTime={activity.timestamp}>
+                                {formatDate(activity.timestamp)}
+                              </time>
                             </div>
                           </div>
                           <div className="shrink-0">
                             <Avatar className="h-8 w-8">
-                              <AvatarImage src={activity.user.avatar || "/placeholder.svg"} alt={activity.user.name} />
-                              <AvatarFallback>{activity.user.initials}</AvatarFallback>
+                              <AvatarImage
+                                src={activity.user.avatar || "/placeholder.svg"}
+                                alt={activity.user.name}
+                              />
+                              <AvatarFallback>
+                                {activity.user.initials}
+                              </AvatarFallback>
                             </Avatar>
                           </div>
                         </div>
@@ -578,5 +691,5 @@ export default function ActivityPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

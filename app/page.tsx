@@ -106,9 +106,9 @@ export default function LandingPage() {
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2 font-bold">
             <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
-              <Bug className="size-5" />
+            <Link href = "/"><Bug className="size-5" /></Link>
             </div>
-            <span>FixIt</span>
+            <Link href = "/"><span>FixIt</span></Link>
           </div>
           <nav className="hidden md:flex gap-8">
             <Link
@@ -257,7 +257,7 @@ export default function LandingPage() {
             >
               <div className="rounded-xl overflow-hidden shadow-2xl border border-border/40 bg-gradient-to-b from-background to-muted/20">
                 <Image
-                  src="/placeholder.svg?height=720&width=1280"
+                  src="/hero.png"
                   width={1280}
                   height={720}
                   alt="FixIt dashboard"
