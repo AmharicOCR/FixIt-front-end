@@ -260,15 +260,26 @@ export default function DashboardLayout({
 
         <div className="flex flex-1">
           {/* Desktop Sidebar */}
-          <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r bg-background">
-            <div className="px-6 py-5 flex items-center gap-2 font-bold border-b">
+          <aside
+            className="hidden lg:flex w-64 shrink-0 flex-col border-r bg-background h-screen sticky top-0" // Ensures full height and sticks to top
+          >
+            {/* 1. Logo Section - Fixed Height, does not shrink */}
+            <div className="px-6 py-5 flex items-center gap-2 font-bold border-b shrink-0">
               <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
                 <Bug className="size-5" />
               </div>
               <span>FixIt</span>
             </div>
-            <div className="flex h-full flex-col py-4">
-              <div className="px-4 py-2">
+
+            {/* 2. Container for the rest of the sidebar (button, scrollable nav, bottom fixed section) */}
+            {/* This container will take the remaining height and manage its children's layout */}
+            <div className="flex flex-1 flex-col overflow-hidden">
+              {" "}
+              {/* flex-1 to take space, overflow-hidden to clip its own overflow */}
+              {/* Log New Error Button - Fixed Height, does not shrink */}
+              <div className="px-4 py-4 shrink-0">
+                {" "}
+                {/* Added py-4 for consistent spacing */}
                 <Button className="w-full justify-start rounded-lg" asChild>
                   <Link href="/dashboard/new-error">
                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -276,7 +287,10 @@ export default function DashboardLayout({
                   </Link>
                 </Button>
               </div>
-              <div className="flex-1 overflow-auto py-2">
+              {/* Scrollable Navigation Links - Takes available space and scrolls if needed */}
+              <div className="flex-1 overflow-y-auto py-2">
+                {" "}
+                {/* flex-1 to grow, overflow-y-auto for scrolling */}
                 <nav className="grid gap-1 px-2">
                   <NavItem
                     href="/dashboard"
@@ -299,6 +313,7 @@ export default function DashboardLayout({
                   >
                     My Errors
                   </NavItem>
+                  {/* Ensure 'user' or 'currentUser' is correctly referenced here */}
                   {user.accountType === "premium" && (
                     <NavItem
                       href="/dashboard/teams"
@@ -308,7 +323,6 @@ export default function DashboardLayout({
                       Teams
                     </NavItem>
                   )}
-
                   <NavItem
                     href="/dashboard/reports"
                     icon={BarChart2}
@@ -316,9 +330,11 @@ export default function DashboardLayout({
                   >
                     Reports
                   </NavItem>
+                  {/* Add more NavItems here to test scrolling if needed */}
                 </nav>
               </div>
-              <div className="border-t px-2 py-4">
+              {/* Bottom Fixed Section (Settings, Help, Profile) - Fixed Height, does not shrink */}
+              <div className="border-t px-2 py-4 shrink-0">
                 <nav className="grid gap-1">
                   <NavItem href="/dashboard/settings" icon={Settings}>
                     Settings
@@ -332,17 +348,20 @@ export default function DashboardLayout({
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="w-full justify-start">
                         <Avatar className="mr-2 h-6 w-6">
-                          <AvatarImage src="/placeholder.svg" alt="User" />
-                          <AvatarFallback>JD</AvatarFallback>
+                          <AvatarImage
+                            src={user.avatarUrl || "/placeholder.svg"}
+                            alt={user.name}
+                          />
+                          <AvatarFallback>{user.initials}</AvatarFallback>
                         </Avatar>
-                        <span>John Doe</span>
+                        <span>{user.name}</span>
                         <ChevronDown className="ml-auto h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-56">
-                      <DropdownMenuLabel>John Doe</DropdownMenuLabel>
-                      <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">
-                        john.doe@example.com
+                      <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
+                      <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                        {user.email}
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
