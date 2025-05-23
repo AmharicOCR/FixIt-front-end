@@ -19,6 +19,7 @@ import {
   Moon,
   HelpCircle,
   ChevronDown,
+  AlertCircle,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -31,16 +32,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useSearchParams, usePathname } from "next/navigation";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { Suspense } from "react";
-// Remove the SocketProvider import:
-// import { SocketProvider } from "@/contexts/socket-context"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle, } from "@/components/ui/alert";
 
-// Remove the NotificationProvider import:
-// import { NotificationProvider } from "@/contexts/notification-context"
-
-// Remove the NotificationBell import:
-// import { NotificationBell } from "@/components/notification-bell"
+import { getCookie } from "@/utils/cookies";
 
 export default function DashboardLayout({
   children,
@@ -52,7 +56,18 @@ export default function DashboardLayout({
   const [mounted, setMounted] = useState(false);
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const user = { accountType: "premium" };
+  const router = useRouter();
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+
+  const user = { 
+    accountType: "premium",
+    name: "John Doe",
+    email: "john.doe@example.com",
+    initials: "JD",
+    avatarUrl: "/placeholder.svg"
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -60,6 +75,38 @@ export default function DashboardLayout({
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    setLogoutError(null);
+
+    try {
+      const csrftoken = getCookie('csrftoken');
+      if (!csrftoken) {
+        throw new Error("CSRF token not found");
+      }
+
+      const response = await fetch("http://127.0.0.1:8000/user/logout/", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to logout");
+      }
+
+      // Redirect to login page after successful logout
+      router.push("/");
+    } catch (err) {
+      setLogoutError(err instanceof Error ? err.message : "An unknown error occurred");
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const NavItem = ({
@@ -92,11 +139,6 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-[100dvh] flex-col">
-      {/* Replace the SocketProvider and NotificationProvider wrappers: */}
-      {/* <SocketProvider userId="user-123">
-        {" "}
-        {/* In a real app, use the actual user ID */}
-      {/* <NotificationProvider> */}
       {/* Mobile Header */}
       <>
         <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-lg md:px-6 lg:hidden">
@@ -120,8 +162,6 @@ export default function DashboardLayout({
             <span>FixIt</span>
           </Link>
           <div className="flex-1"></div>
-          {/* Replace this in the mobile header */}
-          {/* <NotificationBell /> */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
@@ -155,7 +195,7 @@ export default function DashboardLayout({
                 )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsLogoutDialogOpen(true)}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>
@@ -261,9 +301,8 @@ export default function DashboardLayout({
         <div className="flex flex-1">
           {/* Desktop Sidebar */}
           <aside
-            className="hidden lg:flex w-64 shrink-0 flex-col border-r bg-background h-screen sticky top-0" // Ensures full height and sticks to top
+            className="hidden lg:flex w-64 shrink-0 flex-col border-r bg-background h-screen sticky top-0"
           >
-            {/* 1. Logo Section - Fixed Height, does not shrink */}
             <div className="px-6 py-5 flex items-center gap-2 font-bold border-b shrink-0">
               <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
                 <Bug className="size-5" />
@@ -271,15 +310,8 @@ export default function DashboardLayout({
               <span>FixIt</span>
             </div>
 
-            {/* 2. Container for the rest of the sidebar (button, scrollable nav, bottom fixed section) */}
-            {/* This container will take the remaining height and manage its children's layout */}
             <div className="flex flex-1 flex-col overflow-hidden">
-              {" "}
-              {/* flex-1 to take space, overflow-hidden to clip its own overflow */}
-              {/* Log New Error Button - Fixed Height, does not shrink */}
               <div className="px-4 py-4 shrink-0">
-                {" "}
-                {/* Added py-4 for consistent spacing */}
                 <Button className="w-full justify-start rounded-lg" asChild>
                   <Link href="/dashboard/new-error">
                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -287,10 +319,7 @@ export default function DashboardLayout({
                   </Link>
                 </Button>
               </div>
-              {/* Scrollable Navigation Links - Takes available space and scrolls if needed */}
               <div className="flex-1 overflow-y-auto py-2">
-                {" "}
-                {/* flex-1 to grow, overflow-y-auto for scrolling */}
                 <nav className="grid gap-1 px-2">
                   <NavItem
                     href="/dashboard"
@@ -313,7 +342,6 @@ export default function DashboardLayout({
                   >
                     My Errors
                   </NavItem>
-                  {/* Ensure 'user' or 'currentUser' is correctly referenced here */}
                   {user.accountType === "premium" && (
                     <NavItem
                       href="/dashboard/teams"
@@ -330,10 +358,8 @@ export default function DashboardLayout({
                   >
                     Reports
                   </NavItem>
-                  {/* Add more NavItems here to test scrolling if needed */}
                 </nav>
               </div>
-              {/* Bottom Fixed Section (Settings, Help, Profile) - Fixed Height, does not shrink */}
               <div className="border-t px-2 py-4 shrink-0">
                 <nav className="grid gap-1">
                   <NavItem href="/dashboard/settings" icon={Settings}>
@@ -349,7 +375,7 @@ export default function DashboardLayout({
                       <Button variant="ghost" className="w-full justify-start">
                         <Avatar className="mr-2 h-6 w-6">
                           <AvatarImage
-                            src={user.avatarUrl || "/placeholder.svg"}
+                            src={user.avatarUrl}
                             alt={user.name}
                           />
                           <AvatarFallback>{user.initials}</AvatarFallback>
@@ -385,11 +411,9 @@ export default function DashboardLayout({
                         )}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href="/">
-                          <LogOut className="mr-2 h-4 w-4" />
-                          <span>Log out</span>
-                        </Link>
+                      <DropdownMenuItem onClick={() => setIsLogoutDialogOpen(true)}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Log out</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -412,8 +436,6 @@ export default function DashboardLayout({
                 </form>
               </nav>
               <div className="flex items-center gap-4">
-                {/* Replace this in the desktop header */}
-                {/* <NotificationBell /> */}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -453,11 +475,9 @@ export default function DashboardLayout({
                       <Link href="/settings">Settings</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Log out</span>
-                      </Link>
+                    <DropdownMenuItem onClick={() => setIsLogoutDialogOpen(true)}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -469,8 +489,52 @@ export default function DashboardLayout({
           </main>
         </div>
       </>
-      {/* </NotificationProvider> */}
-      {/* </SocketProvider> */}
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Logout</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to log out? You'll need to sign in again to access your account.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsLogoutDialogOpen(false)}
+              disabled={isLoggingOut}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? (
+                <>
+                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Logging out...
+                </>
+              ) : (
+                "Log out"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Logout Error Alert */}
+      {logoutError && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Logout Error</AlertTitle>
+            <AlertDescription>{logoutError}</AlertDescription>
+          </Alert>
+        </div>
+      )}
     </div>
   );
 }

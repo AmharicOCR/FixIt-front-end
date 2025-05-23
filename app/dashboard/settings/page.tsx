@@ -14,13 +14,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
-function getCookie(name: string) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()!.split(';').shift();
-}
-
+import { getCookie } from "@/utils/cookies"
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile")
@@ -55,20 +58,21 @@ export default function SettingsPage() {
     specialChar: false,
     match: true
   })
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const csrftoken = getCookie('csrftoken')
         if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
+          throw new Error("CSRF token not found")
+        }
         const response = await fetch("http://127.0.0.1:8000/user/profile/", {
           method: "GET",
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
-          "X-CSRFToken": csrftoken,
+            "X-CSRFToken": csrftoken,
           },
         })
 
@@ -103,7 +107,6 @@ export default function SettingsPage() {
   }, [])
 
   useEffect(() => {
-    // Validate password strength whenever new_password changes
     if (passwordData.new_password) {
       setPasswordErrors({
         length: passwordData.new_password.length >= 8,
@@ -113,7 +116,6 @@ export default function SettingsPage() {
         match: passwordData.new_password === passwordData.confirm_password
       })
     } else {
-      // Reset validation if password is empty
       setPasswordErrors({
         length: false,
         number: false,
@@ -277,6 +279,37 @@ export default function SettingsPage() {
         confirm_password: ""
       })
       setTimeout(() => setShowSuccessAlert(false), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unknown error occurred")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setIsSaving(true)
+    setError(null)
+
+    try {
+      const csrftoken = getCookie('csrftoken')
+      if (!csrftoken) {
+        throw new Error("CSRF token not found")
+      }
+
+      const response = await fetch("http://127.0.0.1:8000/user/delete-account/", {
+        method: "DELETE",
+        credentials: "include",
+        headers: {
+          "X-CSRFToken": csrftoken,
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to delete account")
+      }
+
+      // Optionally redirect after successful deletion
+      window.location.href = "/"
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred")
     } finally {
@@ -693,7 +726,11 @@ export default function SettingsPage() {
                       Permanently delete your account and all associated data
                     </p>
                   </div>
-                  <Button variant="destructive" className="rounded-lg">
+                  <Button 
+                    variant="destructive" 
+                    className="rounded-lg"
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                  >
                     Delete Account
                   </Button>
                 </div>
@@ -828,6 +865,41 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you absolutely sure?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteAccount}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Account"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
