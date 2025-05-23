@@ -43,10 +43,11 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/hooks/useAuth"
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("overview");
-  const user = { accountType: "premium" };
+  const { authenticated, username, accountType, loading } = useAuth();
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -131,21 +132,23 @@ export default function DashboardPage() {
         className="space-y-4"
         onValueChange={setActiveTab}
       >
-        <TabsList
-          className={`grid w-full max-w-lg rounded-lg ${
-            user.accountType === "premium" ? "grid-cols-3" : "grid-cols-2"
-          }`}
-        >
-          <TabsTrigger value="overview" className="rounded-lg">
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="recent-errors" className="rounded-lg">
-            Recent Errors
-          </TabsTrigger>
-          {user.accountType === "premium" && (
-            <TabsTrigger value="assigned-to-me">Assigned to Me</TabsTrigger>
-          )}
-        </TabsList>
+        {!loading && authenticated && (
+          <TabsList
+            className={`grid w-full max-w-lg rounded-lg ${
+              accountType === "premium" ? "grid-cols-3" : "grid-cols-2"
+            }`}
+          >
+            <TabsTrigger value="overview" className="rounded-lg">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="recent-errors" className="rounded-lg">
+              Recent Errors
+            </TabsTrigger>
+            {accountType === "premium" && (
+              <TabsTrigger value="assigned-to-me">Assigned to Me</TabsTrigger>
+            )}
+          </TabsList>
+        )}
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -203,7 +206,6 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </CardContent>
-
             </Card>
 
             {/* Error Categories */}
