@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,44 +14,179 @@ import { UserErrorsList } from "@/components/admin/user-errors-list"
 import { UserSolutionsList } from "@/components/admin/user-solutions-list"
 import { ArrowLeft, Save, Trash2, Shield, Mail } from "lucide-react"
 import Link from "next/link"
+import { getCookie } from "@/utils/cookies"
+import { toast } from "@/components/ui/use-toast"
+import { format } from "date-fns"
+
+interface UserData {
+  id: number
+  first_name: string
+  last_name: string
+  email: string
+  role: string
+  joined: string | null
+  last_active: string | null
+  company: string | null
+  bio: string | null
+  is_active: boolean
+  permissions?: {
+    canCreateErrors: boolean
+    canCreateSolutions: boolean
+    canModerate: boolean
+    canAssignErrors: boolean
+  }
+}
 
 export default function UserDetailsPage() {
   const { id } = useParams()
-  const [userData, setUserData] = useState({
-    id: id,
-    name: "Jane Smith",
-    email: "jane.smith@example.com",
-    role: "Premium",
-    status: "Active",
-    joined: "Jan 15, 2023",
-    lastActive: "May 19, 2023",
-    organization: "Tech Solutions Inc.",
-    bio: "Senior developer with 8 years of experience in React and Node.js.",
-    isActive: true,
-    isEmailVerified: true,
-    permissions: {
-      canCreateErrors: true,
-      canCreateSolutions: true,
-      canModerate: false,
-      canAssignErrors: true,
-    },
-  })
+  const [userData, setUserData] = useState<UserData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const csrftoken = getCookie('csrftoken')
+        if (!csrftoken) {
+          throw new Error("CSRF token not found")
+        }
+
+        const response = await fetch(`http://127.0.0.1:8000/user/${id}/`, {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "X-CSRFToken": csrftoken,
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user data")
+        }
+
+        const data = await response.json()
+        // Add default permissions if not provided by API
+        const userWithPermissions = {
+          ...data,
+          permissions: data.permissions || {
+            canCreateErrors: true,
+            canCreateSolutions: true,
+            canModerate: false,
+            canAssignErrors: true,
+          }
+        }
+        setUserData(userWithPermissions)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An unknown error occurred")
+        toast({
+          title: "Error loading user data",
+          description: error,
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchUserData()
+  }, [id])
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Never"
+    try {
+      return format(new Date(dateString), "MMM d, yyyy")
+    } catch {
+      return dateString
+    }
+  }
 
   const handleSwitchChange = (field: string) => {
-    setUserData((prev) => ({
-      ...prev,
+    if (!userData) return
+    
+    setUserData({
+      ...userData,
       permissions: {
-        ...prev.permissions,
-        [field]: !prev.permissions[field as keyof typeof prev.permissions],
+        ...userData.permissions!,
+        [field]: !userData.permissions![field as keyof typeof userData.permissions],
       },
-    }))
+    })
   }
 
   const handleStatusChange = () => {
-    setUserData((prev) => ({
-      ...prev,
-      isActive: !prev.isActive,
-    }))
+    if (!userData) return
+    
+    setUserData({
+      ...userData,
+      is_active: !userData.is_active,
+    })
+  }
+
+  const handleSaveChanges = async () => {
+    if (!userData) return
+
+    try {
+      const csrftoken = getCookie('csrftoken')
+      if (!csrftoken) {
+        throw new Error("CSRF token not found")
+      }
+
+      const response = await fetch(`http://127.0.0.1:8000/user/${id}/`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "X-CSRFToken": csrftoken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+          email: userData.email,
+          role: userData.role,
+          is_active: userData.is_active,
+          company: userData.company,
+          bio: userData.bio,
+          permissions: userData.permissions
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update user data")
+      }
+
+      toast({
+        title: "Success",
+        description: "User data updated successfully",
+      })
+    } catch (err) {
+      toast({
+        title: "Error updating user",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive",
+      })
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <p>Loading user data...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-64 text-destructive">
+        <p>{error}</p>
+      </div>
+    )
+  }
+
+  if (!userData) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <p>User not found</p>
+      </div>
+    )
   }
 
   return (
@@ -75,16 +210,16 @@ export default function UserDetailsPage() {
             <div className="flex items-center justify-center">
               <div className="relative">
                 <div className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center text-primary text-3xl font-semibold">
-                  {userData.name.charAt(0)}
+                  {userData.first_name.charAt(0)}{userData.last_name.charAt(0)}
                 </div>
                 <div className="absolute -bottom-1 -right-1 rounded-full bg-background p-1">
-                  <div className={`h-4 w-4 rounded-full ${userData.isActive ? "bg-green-500" : "bg-red-500"}`}></div>
+                  <div className={`h-4 w-4 rounded-full ${userData.is_active ? "bg-green-500" : "bg-red-500"}`}></div>
                 </div>
               </div>
             </div>
 
             <div className="space-y-2 text-center">
-              <h3 className="text-xl font-semibold">{userData.name}</h3>
+              <h3 className="text-xl font-semibold">{userData.first_name} {userData.last_name}</h3>
               <div className="flex items-center justify-center gap-2">
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">{userData.email}</span>
@@ -97,15 +232,15 @@ export default function UserDetailsPage() {
             <div className="space-y-2 pt-4">
               <div className="flex justify-between">
                 <span className="text-sm font-medium">Joined</span>
-                <span className="text-sm text-muted-foreground">{userData.joined}</span>
+                <span className="text-sm text-muted-foreground">{formatDate(userData.joined)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm font-medium">Last Active</span>
-                <span className="text-sm text-muted-foreground">{userData.lastActive}</span>
+                <span className="text-sm text-muted-foreground">{formatDate(userData.last_active)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm font-medium">Organization</span>
-                <span className="text-sm text-muted-foreground">{userData.organization}</span>
+                <span className="text-sm font-medium">Company</span>
+                <span className="text-sm text-muted-foreground">{userData.company || "None"}</span>
               </div>
             </div>
           </CardContent>
@@ -138,11 +273,19 @@ export default function UserDetailsPage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
+                    <Label htmlFor="first_name">First Name</Label>
                     <Input
-                      id="name"
-                      value={userData.name}
-                      onChange={(e) => setUserData({ ...userData, name: e.target.value })}
+                      id="first_name"
+                      value={userData.first_name}
+                      onChange={(e) => setUserData({ ...userData, first_name: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last_name">Last Name</Label>
+                    <Input
+                      id="last_name"
+                      value={userData.last_name}
+                      onChange={(e) => setUserData({ ...userData, last_name: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
@@ -164,15 +307,15 @@ export default function UserDetailsPage() {
                     >
                       <option value="Free">Free User</option>
                       <option value="Premium">Premium User</option>
-                      <option value="Admin">Admin</option>
+                      <option value="Super Admin">Super Admin</option>
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="organization">Organization</Label>
+                    <Label htmlFor="company">Company</Label>
                     <Input
-                      id="organization"
-                      value={userData.organization}
-                      onChange={(e) => setUserData({ ...userData, organization: e.target.value })}
+                      id="company"
+                      value={userData.company || ""}
+                      onChange={(e) => setUserData({ ...userData, company: e.target.value || null })}
                     />
                   </div>
                 </div>
@@ -182,13 +325,13 @@ export default function UserDetailsPage() {
                   <Textarea
                     id="bio"
                     rows={4}
-                    value={userData.bio}
-                    onChange={(e) => setUserData({ ...userData, bio: e.target.value })}
+                    value={userData.bio || ""}
+                    onChange={(e) => setUserData({ ...userData, bio: e.target.value || null })}
                   />
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Switch id="active-status" checked={userData.isActive} onCheckedChange={handleStatusChange} />
+                  <Switch id="active-status" checked={userData.is_active} onCheckedChange={handleStatusChange} />
                   <Label htmlFor="active-status">Account Active</Label>
                 </div>
               </CardContent>
@@ -212,7 +355,7 @@ export default function UserDetailsPage() {
                       </div>
                       <Switch
                         id="create-errors"
-                        checked={userData.permissions.canCreateErrors}
+                        checked={userData.permissions?.canCreateErrors || false}
                         onCheckedChange={() => handleSwitchChange("canCreateErrors")}
                       />
                     </div>
@@ -226,7 +369,7 @@ export default function UserDetailsPage() {
                       </div>
                       <Switch
                         id="create-solutions"
-                        checked={userData.permissions.canCreateSolutions}
+                        checked={userData.permissions?.canCreateSolutions || false}
                         onCheckedChange={() => handleSwitchChange("canCreateSolutions")}
                       />
                     </div>
@@ -242,7 +385,7 @@ export default function UserDetailsPage() {
                       </div>
                       <Switch
                         id="moderate"
-                        checked={userData.permissions.canModerate}
+                        checked={userData.permissions?.canModerate || false}
                         onCheckedChange={() => handleSwitchChange("canModerate")}
                       />
                     </div>
@@ -256,7 +399,7 @@ export default function UserDetailsPage() {
                       </div>
                       <Switch
                         id="assign-errors"
-                        checked={userData.permissions.canAssignErrors}
+                        checked={userData.permissions?.canAssignErrors || false}
                         onCheckedChange={() => handleSwitchChange("canAssignErrors")}
                       />
                     </div>
@@ -266,7 +409,7 @@ export default function UserDetailsPage() {
             </TabsContent>
 
             <CardFooter>
-              <Button className="ml-auto">
+              <Button className="ml-auto" onClick={handleSaveChanges}>
                 <Save className="mr-2 h-4 w-4" />
                 Save Changes
               </Button>
