@@ -25,12 +25,14 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTheme } from "next-themes"
+import { useAuth } from "@/hooks/useAuth"
 
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const { authenticated, username, accountType, loading } = useAuth();
 
   useEffect(() => {
     setMounted(true)
@@ -100,106 +102,138 @@ export default function LandingPage() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col">
-      <header
-        className={`sticky top-0 z-50 w-full backdrop-blur-lg transition-all duration-300 ${isScrolled ? "bg-background/80 shadow-sm" : "bg-transparent"}`}
+       <header
+  className={`sticky top-0 z-50 w-full backdrop-blur-lg transition-all duration-300 ${isScrolled ? "bg-background/80 shadow-sm" : "bg-transparent"}`}
+>
+  <div className="container flex h-16 items-center justify-between">
+    <div className="flex items-center gap-2 font-bold">
+      <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
+        <Link href="/"><Bug className="size-5" /></Link>
+      </div>
+      <Link href="/"><span>FixIt</span></Link>
+    </div>
+    <nav className="hidden md:flex gap-8">
+      <Link
+        href="#features"
+        className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2 font-bold">
-            <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
-            <Link href = "/"><Bug className="size-5" /></Link>
-            </div>
-            <Link href = "/"><span>FixIt</span></Link>
-          </div>
-          <nav className="hidden md:flex gap-8">
-            <Link
-              href="#features"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Features
-            </Link>
-            <Link
-              href="#howitworks"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              How It Works
-            </Link>
-            <Link
-              href="#pricing"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Pricing
-            </Link>
-            <Link
-              href="#faq"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              FAQ
-            </Link>
-          </nav>
-          <div className="hidden md:flex gap-4 items-center">
-            <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full">
-              {mounted && theme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
-              <span className="sr-only">Toggle theme</span>
-            </Button>
-            <Link
-              href="/login"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Log in
-            </Link>
-            <Button className="rounded-full" asChild>
-              <Link href="/signup">
-                Get Started
-                <ChevronRight className="ml-1 size-4" />
-              </Link>
-            </Button>
-          </div>
-          <div className="flex items-center gap-4 md:hidden">
-            <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full">
-              {mounted && theme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-              {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-              <span className="sr-only">Toggle menu</span>
-            </Button>
-          </div>
-        </div>
-        {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="md:hidden absolute top-16 inset-x-0 bg-background/95 backdrop-blur-lg border-b"
+        Features
+      </Link>
+      <Link
+        href="#howitworks"
+        className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        How It Works
+      </Link>
+      <Link
+        href="#pricing"
+        className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        Pricing
+      </Link>
+      <Link
+        href="#faq"
+        className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        FAQ
+      </Link>
+    </nav>
+    <div className="hidden md:flex gap-4 items-center">
+      <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full">
+        {mounted && theme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
+        <span className="sr-only">Toggle theme</span>
+      </Button>
+
+      {!loading && !authenticated ? (
+        <>
+          <Link
+            href="/login"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            <div className="container py-4 flex flex-col gap-4">
-              <Link href="#features" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
-                Features
+            Log in
+          </Link>
+          <Button className="rounded-full" asChild>
+            <Link href="/signup">
+              Get Started
+              <ChevronRight className="ml-1 size-4" />
+            </Link>
+          </Button>
+        </>
+      ) : (
+        !loading && authenticated && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">{username}</span>
+            <Link href="/dashboard">
+              <Button variant="outline" size="sm" className="rounded-full">
+                Dashboard
+              </Button>
+            </Link>
+          </div>
+        )
+      )}
+    </div>
+    <div className="flex items-center gap-4 md:hidden">
+      <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full">
+        {mounted && theme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
+      </Button>
+      <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+        {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+        <span className="sr-only">Toggle menu</span>
+      </Button>
+    </div>
+  </div>
+
+  {/* Mobile menu */}
+  {mobileMenuOpen && (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="md:hidden absolute top-16 inset-x-0 bg-background/95 backdrop-blur-lg border-b"
+    >
+      <div className="container py-4 flex flex-col gap-4">
+        <Link href="#features" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+          Features
+        </Link>
+        <Link href="#howitworks" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+          How It Works
+        </Link>
+        <Link href="#pricing" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+          Pricing
+        </Link>
+        <Link href="#faq" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+          FAQ
+        </Link>
+        <div className="flex flex-col gap-2 pt-2 border-t">
+          {!loading && !authenticated ? (
+            <>
+              <Link href="/login" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+                Log in
               </Link>
-              <Link href="#howitworks" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
-                How It Works
-              </Link>
-              <Link href="#pricing" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
-                Pricing
-              </Link>
-              <Link href="#faq" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
-                FAQ
-              </Link>
-              <div className="flex flex-col gap-2 pt-2 border-t">
-                <Link href="/login" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
-                  Log in
+              <Button className="rounded-full" asChild>
+                <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
+                  Get Started
+                  <ChevronRight className="ml-1 size-4" />
                 </Link>
-                <Button className="rounded-full" asChild>
-                  <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                    Get Started
-                    <ChevronRight className="ml-1 size-4" />
-                  </Link>
-                </Button>
+              </Button>
+            </>
+          ) : (
+            !loading && authenticated && (
+              <div className="flex flex-col gap-2">
+                <div className="py-2 text-sm font-medium">Welcome, {username}</div>
+                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                  <Button className="w-full rounded-full">
+                    Go to Dashboard
+                  </Button>
+                </Link>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </header>
+            )
+          )}
+        </div>
+      </div>
+    </motion.div>
+  )}
+</header>
       <main className="flex-1">
         {/* Hero Section */}
         <section className="w-full py-20 md:py-32 lg:py-40 overflow-hidden">
