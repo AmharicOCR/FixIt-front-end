@@ -12,11 +12,21 @@ import { useRouter } from "next/navigation"
 export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [joinedDateFilter, setJoinedDateFilter] = useState<string[]>([])
   const [sortBy, setSortBy] = useState("newest")
   const router = useRouter()
 
   const handleAddUser = () => {
     router.push("/admin/signup")
+  }
+
+  const handleJoinedDateFilterChange = (filter: string) => {
+    setJoinedDateFilter(prev => 
+      prev.includes(filter) 
+        ? prev.filter(f => f !== filter) 
+        : [...prev, filter]
+    )
   }
 
   return (
@@ -50,6 +60,7 @@ export default function UsersPage() {
               <SelectItem value="free">Free User</SelectItem>
               <SelectItem value="premium">Premium User</SelectItem>
               <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="moderator">Moderator</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -71,12 +82,21 @@ export default function UsersPage() {
 
       <div className="flex flex-col space-y-6 md:flex-row md:space-x-6 md:space-y-0">
         <div className="hidden w-1/4 md:block">
-          <UserFilters />
+          <UserFilters 
+            roleFilter={roleFilter}
+            setRoleFilter={setRoleFilter}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            joinedDateFilter={joinedDateFilter}
+            onJoinedDateFilterChange={handleJoinedDateFilterChange}
+          />
         </div>
         <div className="w-full md:w-3/4">
           <UserList 
             searchQuery={searchQuery} 
             roleFilter={roleFilter} 
+            statusFilter={statusFilter}
+            joinedDateFilter={joinedDateFilter}
             sortBy={sortBy} 
           />
         </div>

@@ -16,7 +16,7 @@ import { MoreHorizontal, Edit, Trash2, UserCheck, UserX } from "lucide-react"
 import Link from "next/link"
 import { getCookie } from "@/utils/cookies"
 import { toast } from "@/components/ui/use-toast"
-import { format } from "date-fns"
+import { format, subDays, startOfYear } from "date-fns"
 
 interface User {
   id: number
@@ -32,10 +32,12 @@ interface User {
 interface UserListProps {
   searchQuery: string
   roleFilter: string
+  statusFilter: string
+  joinedDateFilter: string[]
   sortBy: string
 }
 
-export function UserList({ searchQuery, roleFilter, sortBy }: UserListProps) {
+export function UserList({ searchQuery, roleFilter, statusFilter, joinedDateFilter, sortBy }: UserListProps) {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -86,6 +88,62 @@ export function UserList({ searchQuery, roleFilter, sortBy }: UserListProps) {
     }
   }
 
+  const isWithinDateRange = (dateString: string | null, range: string) => {
+    if (!dateString) return false
+    const date = new Date(dateString)
+    const now = new Date()
+    
+    switch (range) {
+      case "last-7-days":
+        return date >= subDays(now, 7)
+      case "last-30-days":
+        return date >= subDays(now, 30)
+      case "last-90-days":
+        return date >= subDays(now, 90)
+      case "this-year":
+        return date >= startOfYear(now)
+      default:
+        return false
+    }
+  }
+
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch = 
+      `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    const matchesRole = 
+      roleFilter === "all" || 
+      (roleFilter === "free" && user.role === "Free") ||
+      (roleFilter === "premium" && user.role === "Premium") ||
+      (roleFilter === "admin" && user.role === "Super Admin") ||
+      (roleFilter === "moderator" && user.role === "Moderator")
+    
+    const matchesStatus = 
+      statusFilter === "all" ||
+      (statusFilter === "active" && user.is_active) ||
+      (statusFilter === "inactive" && !user.is_active)
+    
+    const matchesJoinedDate = 
+      joinedDateFilter.length === 0 ||
+      joinedDateFilter.some(range => isWithinDateRange(user.last_joined, range))
+    
+    return matchesSearch && matchesRole && matchesStatus && matchesJoinedDate
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case "newest":
+        return new Date(b.last_joined || 0).getTime() - new Date(a.last_joined || 0).getTime()
+      case "oldest":
+        return new Date(a.last_joined || 0).getTime() - new Date(b.last_joined || 0).getTime()
+      case "name-asc":
+        return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
+      case "name-desc":
+        return `${b.first_name} ${b.last_name}`.localeCompare(`${a.first_name} ${a.last_name}`)
+      default:
+        return 0
+    }
+  })
+
   const updateUserRoleAndStatus = async (userId: number, accountType: string, status: string) => {
     try {
       const csrftoken = getCookie('csrftoken')
@@ -100,7 +158,7 @@ export function UserList({ searchQuery, roleFilter, sortBy }: UserListProps) {
           "X-CSRFToken": csrftoken,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ role:accountType, is_active:status === "true" })
+        body: JSON.stringify({ role: accountType, is_active: status === "true" })
       })
 
       if (!response.ok) {
@@ -165,33 +223,6 @@ export function UserList({ searchQuery, roleFilter, sortBy }: UserListProps) {
       })
     }
   }
-
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch = 
-      `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
-    
-    const matchesRole = 
-      roleFilter === "all" || 
-      (roleFilter === "free" && user.role === "Free") ||
-      (roleFilter === "premium" && user.role === "Premium") ||
-      (roleFilter === "admin" && user.role === "Admin")
-    
-    return matchesSearch && matchesRole
-  }).sort((a, b) => {
-    switch (sortBy) {
-      case "newest":
-        return new Date(b.last_joined || 0).getTime() - new Date(a.last_joined || 0).getTime()
-      case "oldest":
-        return new Date(a.last_joined || 0).getTime() - new Date(b.last_joined || 0).getTime()
-      case "name-asc":
-        return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
-      case "name-desc":
-        return `${b.first_name} ${b.last_name}`.localeCompare(`${a.first_name} ${a.last_name}`)
-      default:
-        return 0
-    }
-  })
 
   if (loading) {
     return (
@@ -318,7 +349,6 @@ export function UserList({ searchQuery, roleFilter, sortBy }: UserListProps) {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           className="text-destructive"
-                          // onClick={() => handleDelete(user.id)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
