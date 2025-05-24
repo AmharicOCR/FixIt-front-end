@@ -9,13 +9,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import Cookies from 'js-cookie';
+import { useAuth } from "@/hooks/useAuth"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const { authenticated, username, accountType, loading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,12 +73,15 @@ export default function LoginPage() {
       }
 
       // Login successful - redirect to dashboard
-      window.location.href = "/dashboard/settings"
-      // console.log(getCookie('csrftoken'))
-      // console.log(document.cookie);
-//       const csrfToken = Cookies.get();
-// console.log('CSRF Token:', csrfToken);
-// console.log(data);
+      if (accountType=== "Super Admin" || accountType === "Moderator") {
+        window.location.href = "/admin/dashboard"
+
+      }
+      else if (accountType === "Premium" || accountType === "Free") {
+         window.location.href = "/dashboard"
+      } else {
+        window.location.href = "/"
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred")
       setIsLoading(false)
