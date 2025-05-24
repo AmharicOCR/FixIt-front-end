@@ -64,7 +64,6 @@ export default function UserDetailsPage() {
         }
 
         const data = await response.json()
-        // Add default permissions if not provided by API
         const userWithPermissions = {
           ...data,
           permissions: data.permissions || {
@@ -111,50 +110,35 @@ export default function UserDetailsPage() {
     })
   }
 
-  const handleStatusChange = () => {
-    if (!userData) return
-    
-    setUserData({
-      ...userData,
-      is_active: !userData.is_active,
-    })
-  }
-
   const handleSaveChanges = async () => {
-    if (!userData) return
-
+    if (!userData) return;
+    
     try {
       const csrftoken = getCookie('csrftoken')
       if (!csrftoken) {
         throw new Error("CSRF token not found")
       }
 
-      const response = await fetch(`http://127.0.0.1:8000/user/${id}/`, {
+      const response = await fetch(`http://127.0.0.1:8000/user/role-status/${id}/`, {
         method: "PUT",
         credentials: "include",
         headers: {
           "X-CSRFToken": csrftoken,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          first_name: userData.first_name,
-          last_name: userData.last_name,
-          email: userData.email,
-          role: userData.role,
-          is_active: userData.is_active,
-          company: userData.company,
-          bio: userData.bio,
-          permissions: userData.permissions
+        body: JSON.stringify({ 
+          role: userData.role, 
+          is_active: userData.is_active 
         })
       })
 
       if (!response.ok) {
-        throw new Error("Failed to update user data")
+        throw new Error("Failed to update user role and status")
       }
-
+      
       toast({
-        title: "Success",
-        description: "User data updated successfully",
+        title: "User updated",
+        description: `User role changed to ${userData.role} and status to ${userData.is_active ? 'active' : 'inactive'}`,
       })
     } catch (err) {
       toast({
@@ -249,10 +233,6 @@ export default function UserDetailsPage() {
               <Mail className="mr-2 h-4 w-4" />
               Email
             </Button>
-            <Button variant="destructive" size="sm">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </Button>
           </CardFooter>
         </Card>
 
@@ -263,7 +243,7 @@ export default function UserDetailsPage() {
                 <CardTitle>Account Information</CardTitle>
                 <TabsList>
                   <TabsTrigger value="details">Details</TabsTrigger>
-                  <TabsTrigger value="permissions">Permissions</TabsTrigger>
+                  {/* <TabsTrigger value="permissions">Permissions</TabsTrigger> */}
                 </TabsList>
               </div>
               <CardDescription>Manage user account details and permissions</CardDescription>
@@ -277,6 +257,7 @@ export default function UserDetailsPage() {
                     <Input
                       id="first_name"
                       value={userData.first_name}
+                      disabled={true}
                       onChange={(e) => setUserData({ ...userData, first_name: e.target.value })}
                     />
                   </div>
@@ -284,6 +265,7 @@ export default function UserDetailsPage() {
                     <Label htmlFor="last_name">Last Name</Label>
                     <Input
                       id="last_name"
+                      disabled={true}
                       value={userData.last_name}
                       onChange={(e) => setUserData({ ...userData, last_name: e.target.value })}
                     />
@@ -294,6 +276,7 @@ export default function UserDetailsPage() {
                       id="email"
                       type="email"
                       value={userData.email}
+                      disabled={true}
                       onChange={(e) => setUserData({ ...userData, email: e.target.value })}
                     />
                   </div>
@@ -307,7 +290,8 @@ export default function UserDetailsPage() {
                     >
                       <option value="Free">Free User</option>
                       <option value="Premium">Premium User</option>
-                      <option value="Super Admin">Super Admin</option>
+                      <option value="Moderator">Moderator</option>
+                      <option value="Super Admin">Admin</option>
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -315,6 +299,7 @@ export default function UserDetailsPage() {
                     <Input
                       id="company"
                       value={userData.company || ""}
+                      disabled={true}
                       onChange={(e) => setUserData({ ...userData, company: e.target.value || null })}
                     />
                   </div>
@@ -326,12 +311,17 @@ export default function UserDetailsPage() {
                     id="bio"
                     rows={4}
                     value={userData.bio || ""}
+                    disabled={true}
                     onChange={(e) => setUserData({ ...userData, bio: e.target.value || null })}
                   />
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Switch id="active-status" checked={userData.is_active} onCheckedChange={handleStatusChange} />
+                  <Switch 
+                    id="active-status" 
+                    checked={userData.is_active} 
+                    onCheckedChange={(checked) => setUserData({ ...userData, is_active: checked })} 
+                  />
                   <Label htmlFor="active-status">Account Active</Label>
                 </div>
               </CardContent>

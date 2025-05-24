@@ -26,13 +26,16 @@ interface User {
   role: string
   status: string
   last_joined: string | null
+  is_active: boolean
 }
 
 interface UserListProps {
   searchQuery: string
+  roleFilter: string
+  sortBy: string
 }
 
-export function UserList({ searchQuery }: UserListProps) {
+export function UserList({ searchQuery, roleFilter, sortBy }: UserListProps) {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -83,47 +86,112 @@ export function UserList({ searchQuery }: UserListProps) {
     }
   }
 
-  const filteredUsers = users.filter(
-    (user) =>
-      `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
-
-  const handleStatusChange = async (userId: number, newStatus: string) => {
+  const updateUserRoleAndStatus = async (userId: number, accountType: string, status: string) => {
     try {
       const csrftoken = getCookie('csrftoken')
       if (!csrftoken) {
         throw new Error("CSRF token not found")
       }
 
-      // Implement your API call to change user status here
-      // await fetch(`http://127.0.0.1:8000/user/update-status/${userId}/`, {
-      //   method: "POST",
-      //   credentials: "include",
-      //   headers: {
-      //     "X-CSRFToken": csrftoken,
-      //     "Content-Type": "application/json",
-      //   },
-      //   body: JSON.stringify({ status: newStatus })
-      // })
+      const response = await fetch(`http://127.0.0.1:8000/user/role-status/${userId}/`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "X-CSRFToken": csrftoken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role:accountType, is_active:status === "true" })
+      })
 
-      // For now, just update local state
+      if (!response.ok) {
+        throw new Error("Failed to update user role and status")
+      }
+
       setUsers(users.map(user => 
-        user.id === userId ? { ...user, status: newStatus } : user
+        user.id === userId ? { ...user, role: accountType, status } : user
       ))
 
       toast({
-        title: "User status updated",
-        description: `User status changed to ${newStatus}`,
+        title: "User updated",
+        description: `User role changed to ${accountType} and status to ${status}`,
       })
     } catch (err) {
       toast({
-        title: "Error updating status",
+        title: "Error updating user",
         description: err instanceof Error ? err.message : "An unknown error occurred",
         variant: "destructive",
       })
     }
   }
+
+  const toggleUserActivation = async (userId: number, isActive: boolean) => {
+    try {
+      const csrftoken = getCookie('csrftoken')
+      if (!csrftoken) {
+        throw new Error("CSRF token not found")
+      }
+
+      const response = await fetch(`http://127.0.0.1:8000/user/toggle-activation/${userId}/`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "X-CSRFToken": csrftoken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ is_active: isActive })
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to toggle user activation")
+      }
+
+      setUsers(users.map(user => 
+        user.id === userId ? { 
+          ...user, 
+          is_active: isActive,
+          status: isActive ? "Active" : "Inactive"
+        } : user
+      ))
+      
+      toast({
+        title: "User activation updated",
+        description: `User is now ${isActive ? 'active' : 'inactive'}`,
+      })
+    } catch (err) {
+      toast({
+        title: "Error updating activation",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch = 
+      `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    const matchesRole = 
+      roleFilter === "all" || 
+      (roleFilter === "free" && user.role === "Free") ||
+      (roleFilter === "premium" && user.role === "Premium") ||
+      (roleFilter === "admin" && user.role === "Admin")
+    
+    return matchesSearch && matchesRole
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case "newest":
+        return new Date(b.last_joined || 0).getTime() - new Date(a.last_joined || 0).getTime()
+      case "oldest":
+        return new Date(a.last_joined || 0).getTime() - new Date(b.last_joined || 0).getTime()
+      case "name-asc":
+        return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
+      case "name-desc":
+        return `${b.first_name} ${b.last_name}`.localeCompare(`${a.first_name} ${a.last_name}`)
+      default:
+        return 0
+    }
+  })
 
   if (loading) {
     return (
@@ -181,7 +249,7 @@ export function UserList({ searchQuery }: UserListProps) {
                   </td>
                   <td className="p-4 align-middle">
                     <Badge
-                      variant={user.role === "Super Admin" ? "default" : user.role === "Premium" ? "outline" : "secondary"}
+                      variant={user.role === "Admin" ? "default" : user.role === "Premium" ? "outline" : "secondary"}
                     >
                       {user.role}
                     </Badge>
@@ -208,12 +276,12 @@ export function UserList({ searchQuery }: UserListProps) {
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem 
-                          onClick={() => handleStatusChange(
+                          onClick={() => toggleUserActivation(
                             user.id, 
-                            user.status === "Active" ? "Inactive" : "Active"
+                            !user.is_active
                           )}
                         >
-                          {user.status === "Active" ? (
+                          {user.is_active ? (
                             <>
                               <UserX className="mr-2 h-4 w-4" />
                               Deactivate
@@ -225,6 +293,28 @@ export function UserList({ searchQuery }: UserListProps) {
                             </>
                           )}
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className="w-full">
+                            <div className="flex items-center px-2 py-1.5 text-sm">
+                              <span className="mr-2">Change Role</span>
+                            </div>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => updateUserRoleAndStatus(user.id, "Free", user.status)}>
+                              Free User
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateUserRoleAndStatus(user.id, "Premium", user.status)}>
+                              Premium User
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateUserRoleAndStatus(user.id, "Moderator", user.status)}>
+                              Moderator
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateUserRoleAndStatus(user.id, "Super Admin", user.status)}>
+                              Super Admin
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           className="text-destructive"

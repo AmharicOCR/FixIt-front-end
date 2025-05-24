@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [roleFilter, setRoleFilter] = useState("all")
+  const [sortBy, setSortBy] = useState("newest")
 
   return (
     <div className="space-y-6">
@@ -33,7 +35,7 @@ export default function UsersPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Select defaultValue="all">
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Role" />
             </SelectTrigger>
@@ -47,7 +49,7 @@ export default function UsersPage() {
         </div>
 
         <div className="flex items-center space-x-2">
-          <Select defaultValue="newest">
+          <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
@@ -66,7 +68,11 @@ export default function UsersPage() {
           <UserFilters />
         </div>
         <div className="w-full md:w-3/4">
-          <UserList searchQuery={searchQuery} />
+          <UserList 
+            searchQuery={searchQuery} 
+            roleFilter={roleFilter} 
+            sortBy={sortBy} 
+          />
         </div>
       </div>
     </div>

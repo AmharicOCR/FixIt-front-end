@@ -67,7 +67,7 @@ export default function SignupPage() {
       }
     }
 
-    window.location.href = "/dashboard"
+    window.location.href = "/login"
   } catch (err) {
     setError(err instanceof Error ? err.message : "An unknown error occurred")
     setIsLoading(false)
