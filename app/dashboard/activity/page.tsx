@@ -29,12 +29,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/hooks/useAuth"
 
 export default function ActivityPage() {
   const [dateRange, setDateRange] = useState("7days");
   const [activityType, setActivityType] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
-  const user = { accountType: "premium" };
+  const { authenticated, username, accountType, loading } = useAuth();
 
   // Mock activity data
   const activities = [
@@ -492,18 +493,20 @@ export default function ActivityPage() {
         {/* Activity Feed */}
         <div className="md:col-span-3 space-y-4">
           <Tabs defaultValue="all" className="w-full">
-            <TabsList
-              className={`grid w-full rounded-lg ${
-                user.accountType === "premium" ? "grid-cols-4" : "grid-cols-3"
-              }`}
-            >
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="errors">Errors</TabsTrigger>
-              <TabsTrigger value="solutions">Solutions</TabsTrigger>
-              {user.accountType === "premium" && (
-                <TabsTrigger value="team">Team</TabsTrigger>
-              )}
-            </TabsList>
+            {!loading && authenticated && (
+              <TabsList
+                className={`grid w-full rounded-lg ${
+                  accountType === "premium" ? "grid-cols-4" : "grid-cols-3"
+                }`}
+              >
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="errors">Errors</TabsTrigger>
+                <TabsTrigger value="solutions">Solutions</TabsTrigger>
+                {accountType === "premium" && (
+                  <TabsTrigger value="team">Team</TabsTrigger>
+                )}
+              </TabsList>
+            )}
             <TabsContent value="all" className="mt-4">
               <Card className="border-border/40 shadow-sm">
                 <CardContent className="p-0">
