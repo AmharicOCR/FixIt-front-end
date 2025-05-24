@@ -89,7 +89,7 @@ export default function AdminSignupPage() {
           email: data.email,
           first_name: data.firstName,
           last_name: data.lastName,
-          accountType: data.accountType,
+          accountType: "Premium",
           admin_type: data.adminType,
         }),
       });
@@ -105,7 +105,7 @@ export default function AdminSignupPage() {
       });
 
       // Redirect to admin dashboard or refresh admin list
-      router.push("/admin");
+      router.push("/admin/login");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred");
       toast({
@@ -208,7 +208,7 @@ export default function AdminSignupPage() {
             />
 
             <div className="grid grid-cols-2 gap-4">
-              <FormField
+              {/* <FormField
                 control={form.control}
                 name="accountType"
                 render={({ field }) => (
@@ -231,7 +231,7 @@ export default function AdminSignupPage() {
                     <FormMessage />
                   </FormItem>
                 )}
-              />
+              /> */}
 
               <FormField
                 control={form.control}
