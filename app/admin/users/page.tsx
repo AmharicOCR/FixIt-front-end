@@ -7,17 +7,23 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, Plus } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useRouter } from "next/navigation"
 
 export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
   const [sortBy, setSortBy] = useState("newest")
+  const router = useRouter()
+
+  const handleAddUser = () => {
+    router.push("/admin/signup")
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-        <Button>
+        <Button onClick={handleAddUser}>
           <Plus className="mr-2 h-4 w-4" />
           Add User
         </Button>
