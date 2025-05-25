@@ -1,27 +1,41 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Bug, Filter, MoreHorizontal, PlusCircle } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState } from "react";
+import Link from "next/link";
+import { Bug, Filter, MoreHorizontal, PlusCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function MyErrorsPage() {
-  const [activeTab, setActiveTab] = useState("created")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [priorityFilter, setPriorityFilter] = useState("all")
+  const [activeTab, setActiveTab] = useState("created");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const { authenticated, username, accountType, loading } = useAuth();
 
   // Mock data for errors created by user
   const createdErrors = [
     {
       id: "err-001",
       title: "TypeError in React useEffect Hook",
-      description: "Cannot read property 'data' of undefined in useEffect dependency array",
+      description:
+        "Cannot read property 'data' of undefined in useEffect dependency array",
       category: "React",
       priority: "High",
       status: "Open",
@@ -39,20 +53,22 @@ export default function MyErrorsPage() {
     {
       id: "err-003",
       title: "JWT Authentication Failure",
-      description: "Token validation fails intermittently in production environment",
+      description:
+        "Token validation fails intermittently in production environment",
       category: "Authentication",
       priority: "High",
       status: "Resolved",
       createdAt: "2 days ago",
     },
-  ]
+  ];
 
   // Mock data for errors assigned to user
   const assignedErrors = [
     {
       id: "err-004",
       title: "API Rate Limiting Issue",
-      description: "Third-party API rate limiting causing intermittent failures",
+      description:
+        "Third-party API rate limiting causing intermittent failures",
       category: "API",
       priority: "High",
       status: "In Progress",
@@ -80,7 +96,8 @@ export default function MyErrorsPage() {
     {
       id: "err-006",
       title: "Webpack Build Optimization",
-      description: "Build times are excessive and bundle size needs optimization",
+      description:
+        "Build times are excessive and bundle size needs optimization",
       category: "Performance",
       priority: "Low",
       status: "Open",
@@ -91,30 +108,34 @@ export default function MyErrorsPage() {
       },
       assignedAt: "3 days ago",
     },
-  ]
+  ];
 
   // Filter errors based on current filters
   const filterErrors = (errors: any[]) => {
     return errors.filter((error) => {
-      if (statusFilter !== "all" && error.status !== statusFilter) return false
-      if (priorityFilter !== "all" && error.priority !== priorityFilter) return false
-      return true
-    })
-  }
+      if (statusFilter !== "all" && error.status !== statusFilter) return false;
+      if (priorityFilter !== "all" && error.priority !== priorityFilter)
+        return false;
+      return true;
+    });
+  };
 
   // Get filtered error lists
-  const filteredCreatedErrors = filterErrors(createdErrors)
-  const filteredAssignedErrors = filterErrors(assignedErrors)
+  const filteredCreatedErrors = filterErrors(createdErrors);
+  const filteredAssignedErrors = filterErrors(assignedErrors);
 
   // Get active errors list based on current tab
-  const activeErrors = activeTab === "created" ? filteredCreatedErrors : filteredAssignedErrors
+  const activeErrors =
+    activeTab === "created" ? filteredCreatedErrors : filteredAssignedErrors;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">My Errors</h1>
-          <p className="text-muted-foreground">View errors you've created or that are assigned to you</p>
+          <p className="text-muted-foreground">
+            View errors you've created or that are assigned to you
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" className="rounded-lg">
@@ -132,11 +153,17 @@ export default function MyErrorsPage() {
 
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-4 justify-between">
-          <Tabs defaultValue="created" className="w-full sm:w-auto" onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2 sm:w-[400px]">
-              <TabsTrigger value="created">Created By Me</TabsTrigger>
-              <TabsTrigger value="assigned">Assigned To Me</TabsTrigger>
-            </TabsList>
+          <Tabs
+            defaultValue="created"
+            className="w-full sm:w-auto"
+            onValueChange={setActiveTab}
+          >
+            {!loading && authenticated && accountType === "premium" && (
+              <TabsList className="grid w-full grid-cols-2 sm:w-[400px]">
+                <TabsTrigger value="created">Created By Me</TabsTrigger>
+                <TabsTrigger value="assigned">Assigned To Me</TabsTrigger>
+              </TabsList>
+            )}
           </Tabs>
 
           <div className="flex flex-wrap gap-2">
@@ -170,7 +197,9 @@ export default function MyErrorsPage() {
         <Card className="border-border/40 shadow-sm">
           <CardHeader className="px-6 py-5">
             <CardTitle className="text-base font-medium">
-              {activeTab === "created" ? "Errors Created By Me" : "Errors Assigned To Me"}
+              {activeTab === "created"
+                ? "Errors Created By Me"
+                : "Errors Assigned To Me"}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -189,10 +218,10 @@ export default function MyErrorsPage() {
                             error.priority === "Critical"
                               ? "bg-red-500/20 text-red-500"
                               : error.priority === "High"
-                                ? "bg-amber-500/20 text-amber-500"
-                                : error.priority === "Medium"
-                                  ? "bg-blue-500/20 text-blue-500"
-                                  : "bg-green-500/20 text-green-500"
+                              ? "bg-amber-500/20 text-amber-500"
+                              : error.priority === "Medium"
+                              ? "bg-blue-500/20 text-blue-500"
+                              : "bg-green-500/20 text-green-500"
                           }`}
                         >
                           <Bug className="h-5 w-5" />
@@ -204,11 +233,16 @@ export default function MyErrorsPage() {
                           >
                             {error.title}
                           </Link>
-                          <p className="text-xs text-muted-foreground line-clamp-1">{error.description}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">
+                            {error.description}
+                          </p>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2 mt-2 sm:mt-0 ml-0 sm:ml-4">
-                        <Badge variant="secondary" className="text-xs rounded-full">
+                        <Badge
+                          variant="secondary"
+                          className="text-xs rounded-full"
+                        >
                           {error.category}
                         </Badge>
                         <Badge
@@ -217,8 +251,8 @@ export default function MyErrorsPage() {
                             error.status === "Open"
                               ? "border-amber-500 text-amber-500"
                               : error.status === "In Progress"
-                                ? "border-blue-500 text-blue-500"
-                                : "border-green-500 text-green-500"
+                              ? "border-blue-500 text-blue-500"
+                              : "border-green-500 text-green-500"
                           }`}
                         >
                           {error.status}
@@ -229,10 +263,10 @@ export default function MyErrorsPage() {
                             error.priority === "Critical"
                               ? "border-red-500 text-red-500"
                               : error.priority === "High"
-                                ? "border-amber-500 text-amber-500"
-                                : error.priority === "Medium"
-                                  ? "border-blue-500 text-blue-500"
-                                  : "border-green-500 text-green-500"
+                              ? "border-amber-500 text-amber-500"
+                              : error.priority === "Medium"
+                              ? "border-blue-500 text-blue-500"
+                              : "border-green-500 text-green-500"
                           }`}
                         >
                           {error.priority}
@@ -244,30 +278,46 @@ export default function MyErrorsPage() {
                         {activeTab === "assigned" && error.assignedBy && (
                           <Avatar className="h-6 w-6 mr-2">
                             <AvatarImage
-                              src={error.assignedBy.avatar || "/placeholder.svg"}
+                              src={
+                                error.assignedBy.avatar || "/placeholder.svg"
+                              }
                               alt={error.assignedBy.name}
                             />
-                            <AvatarFallback>{error.assignedBy.initials}</AvatarFallback>
+                            <AvatarFallback>
+                              {error.assignedBy.initials}
+                            </AvatarFallback>
                           </Avatar>
                         )}
                         <span className="sr-only sm:not-sr-only">
-                          {activeTab === "created" ? error.createdAt : `Assigned ${error.assignedAt}`}
+                          {activeTab === "created"
+                            ? error.createdAt
+                            : `Assigned ${error.assignedAt}`}
                         </span>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full"
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                             <span className="sr-only">More</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/error-details/${error.id}`}>View details</Link>
+                            <Link href={`/dashboard/error-details/${error.id}`}>
+                              View details
+                            </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem>Update status</DropdownMenuItem>
                           <DropdownMenuItem>Add solution</DropdownMenuItem>
-                          {activeTab === "created" && <DropdownMenuItem>Assign to someone</DropdownMenuItem>}
+                          {!loading && authenticated && accountType === "premium" && activeTab === "created" && (
+                            <DropdownMenuItem>
+                              Assign to someone
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -295,5 +345,5 @@ export default function MyErrorsPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
