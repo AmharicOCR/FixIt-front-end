@@ -143,11 +143,9 @@ export default function DashboardPage() {
           <TabsTrigger value="recent-errors" className="rounded-lg">
             Recent Errors
           </TabsTrigger>
-          {!loading &&
-            authenticated &&
-            accountType === "premium" &&(
-              <TabsTrigger value="assigned-to-me">Assigned to Me</TabsTrigger>
-            )}
+          {!loading && authenticated && accountType === "premium" && (
+            <TabsTrigger value="assigned-to-me">Assigned to Me</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -703,7 +701,11 @@ export default function DashboardPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem>View details</DropdownMenuItem>
-                          <DropdownMenuItem>Assign to me</DropdownMenuItem>
+                          {!loading &&
+                            authenticated &&
+                            accountType === "premium" && (
+                              <DropdownMenuItem>Assign to me</DropdownMenuItem>
+                            )}
                           <DropdownMenuItem>Mark as resolved</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
