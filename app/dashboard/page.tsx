@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@/hooks/useAuth";
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -132,23 +132,23 @@ export default function DashboardPage() {
         className="space-y-4"
         onValueChange={setActiveTab}
       >
-        {!loading && authenticated && (
-          <TabsList
-            className={`grid w-full max-w-lg rounded-lg ${
-              accountType === "premium" ? "grid-cols-3" : "grid-cols-2"
-            }`}
-          >
-            <TabsTrigger value="overview" className="rounded-lg">
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="recent-errors" className="rounded-lg">
-              Recent Errors
-            </TabsTrigger>
-            {accountType === "premium" && (
+        <TabsList
+          className={`grid w-full max-w-lg rounded-lg ${
+            accountType === "premium" ? "grid-cols-3" : "grid-cols-2"
+          }`}
+        >
+          <TabsTrigger value="overview" className="rounded-lg">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="recent-errors" className="rounded-lg">
+            Recent Errors
+          </TabsTrigger>
+          {!loading &&
+            authenticated &&
+            accountType === "premium" &&(
               <TabsTrigger value="assigned-to-me">Assigned to Me</TabsTrigger>
             )}
-          </TabsList>
-        )}
+        </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -427,7 +427,11 @@ export default function DashboardPage() {
                 <CardDescription>Frequently used features</CardDescription>
               </CardHeader>
               <CardContent className="px-6">
-                <div className="grid grid-cols-2 gap-4">
+                <div
+                  className={`grid gap-4 ${
+                    accountType === "premium" ? "grid-cols-2" : "grid-cols-1"
+                  }`}
+                >
                   <Button
                     variant="outline"
                     className="h-auto justify-start gap-2 p-3 text-sm rounded-lg"
@@ -463,15 +467,17 @@ export default function DashboardPage() {
                     className="h-auto justify-start gap-2 p-3 text-sm rounded-lg"
                     asChild
                   >
-                    <Link href="/dashboard/teams">
-                      <Users className="h-5 w-5 text-primary" />
-                      <div className="text-left">
-                        <div className="font-medium">My Team</div>
-                        <div className="text-xs font-normal text-muted-foreground">
-                          Team workspace
+                    {!loading && authenticated && accountType === "premium" && (
+                      <Link href="/dashboard/teams">
+                        <Users className="h-5 w-5 text-primary" />
+                        <div className="text-left">
+                          <div className="font-medium">My Team</div>
+                          <div className="text-xs font-normal text-muted-foreground">
+                            Team workspace
+                          </div>
                         </div>
-                      </div>
-                    </Link>
+                      </Link>
+                    )}
                   </Button>
                   <Button
                     variant="outline"
