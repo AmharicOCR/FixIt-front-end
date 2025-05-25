@@ -31,7 +31,7 @@ export default function SignupPage() {
     password: formData.get("password") as string,
     first_name: formData.get("first-name") as string,
     last_name: formData.get("last-name") as string,
-    accountType: accountType === "free" ? "Free" : "Team"
+    accountType: accountType === "free" ? "Free" : "Premium"
   }
 
   try {
@@ -162,7 +162,7 @@ export default function SignupPage() {
                     </Label>
                   </div>
                   <div>
-                    <RadioGroupItem value="team" id="team" className="peer sr-only" />
+                    <RadioGroupItem value="Premium" id="team" className="peer sr-only" />
                     <Label
                       htmlFor="team"
                       className="flex flex-col items-center justify-between rounded-lg border-2 border-muted bg-transparent p-4 hover:bg-muted hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"

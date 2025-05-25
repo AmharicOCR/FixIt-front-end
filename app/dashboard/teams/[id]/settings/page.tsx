@@ -1,13 +1,12 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowLeft, Info, MoreHorizontal, PlusCircle, Save, Trash2, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -43,90 +42,259 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { getCookie } from "@/utils/cookies"
+
+interface TeamMember {
+  id: number
+  name: string
+}
+
+interface Team {
+  id: number
+  name: string
+  description: string
+  created_by: string
+  team_members: TeamMember[]
+}
 
 export default function TeamSettingsPage({ params }: { params: { id: string } }) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("general")
-  const [teamName, setTeamName] = useState("Frontend Development")
-  const [teamDescription, setTeamDescription] = useState(
-    "Responsible for UI/UX implementation and frontend architecture",
-  )
-  const [isPublic, setIsPublic] = useState(false)
+  const [team, setTeam] = useState<Team | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showInviteDialog, setShowInviteDialog] = useState(false)
   const [inviteEmail, setInviteEmail] = useState("")
-  const [inviteRole, setInviteRole] = useState("member")
   const [isSaving, setIsSaving] = useState(false)
+  const [toasts, setToasts] = useState<{id: string, message: string, type: 'success' | 'error'}[]>([])
+  const csrftoken = getCookie("csrftoken")
 
-  // Mock team members data
-  const members = [
-    {
-      id: "user-1",
-      name: "John Assefa",
-      email: "john@example.com",
-      avatar: "/placeholder.svg",
-      initials: "JA",
-      role: "admin",
-      joinedAt: "Jan 15, 2023",
-    },
-    {
-      id: "user-2",
-      name: "Abiy Shiferaw",
-      email: "abiy@example.com",
-      avatar: "/placeholder.svg",
-      initials: "AS",
-      role: "member",
-      joinedAt: "Feb 23, 2023",
-    },
-    {
-      id: "user-3",
-      name: "Sarah Johnson",
-      email: "sarah@example.com",
-      avatar: "/placeholder.svg",
-      initials: "SJ",
-      role: "member",
-      joinedAt: "Mar 11, 2023",
-    },
-    {
-      id: "user-4",
-      name: "Michael Chen",
-      email: "michael@example.com",
-      avatar: "/placeholder.svg",
-      initials: "MC",
-      role: "member",
-      joinedAt: "Apr 5, 2023",
-    },
-  ]
-
-  const handleSaveGeneral = () => {
-    setIsSaving(true)
-
-    // Simulate API call
+  const showToast = (message: string, type: 'success' | 'error') => {
+    const id = Math.random().toString(36).substring(2, 9)
+    setToasts(prev => [...prev, { id, message, type }])
     setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id))
+    }, 5000)
+  }
+
+  const fetchTeam = async () => {
+    try {
+      if (!csrftoken) {
+        throw new Error("CSRF token not found")
+      }
+      const response = await fetch(`http://127.0.0.1:8000/bugtracker/teams/${params.id}/`, {
+        method: "GET",
+        credentials: 'include',
+        headers: {
+          "X-CSRFToken": csrftoken,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch team')
+      }
+
+      const data = await response.json()
+      setTeam(data)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to load team", 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchTeam()
+  }, [params.id])
+
+  const handleSaveGeneral = async () => {
+    if (!team) return
+
+    setIsSaving(true)
+    
+    try {
+      if (!csrftoken) {
+        throw new Error("CSRF token not found")
+      }
+      const response = await fetch(`http://127.0.0.1:8000/bugtracker/teams/${team.id}/`, {
+        method: "PUT",
+        credentials: 'include',
+        headers: {
+          "X-CSRFToken": csrftoken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: team.name,
+          description: team.description,
+          team_members: team.team_members.map(member => member.name) // Using name as email placeholder
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to update team')
+      }
+
+      showToast("Team updated successfully", 'success')
+      fetchTeam() // Refetch data
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to update team", 'error')
+    } finally {
       setIsSaving(false)
-      // In a real app, you would make an API call to update the team
-    }, 1000)
+    }
   }
 
-  const handleInviteUser = (e: React.FormEvent) => {
+  const handleInviteUser = async (e: React.FormEvent) => {
     e.preventDefault()
-    // In a real app, you would make an API call to invite the user
-    setShowInviteDialog(false)
-    setInviteEmail("")
-    setInviteRole("member")
+    
+    try {
+      if (!team) return
+
+      // Add new member to the team
+      const updatedMembers = [
+        ...team.team_members,
+        { id: 0, name: inviteEmail } // Temporary ID, will be replaced after refetch
+      ]
+      if (!csrftoken) {
+        throw new Error("CSRF token not found")
+      }
+      const response = await fetch(`http://127.0.0.1:8000/bugtracker/teams/${team.id}/`, {
+        method: "PUT",
+        credentials: 'include',
+        headers: {
+          "X-CSRFToken": csrftoken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: team.name,
+          description: team.description,
+          team_members: updatedMembers.map(member => member.name)
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to add member')
+      }
+
+      showToast(`Member ${inviteEmail} added successfully`, 'success')
+      setShowInviteDialog(false)
+      setInviteEmail("")
+      fetchTeam() // Refetch data
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to add member", 'error')
+    }
   }
 
-  const handleDeleteTeam = () => {
-    // In a real app, you would make an API call to delete the team
-    setShowDeleteConfirm(false)
-    window.location.href = "/dashboard/teams"
+  const handleDeleteTeam = async () => {
+    try {
+      if (!csrftoken) {
+        throw new Error("CSRF token not found")
+      }
+      const response = await fetch(`http://127.0.0.1:8000/bugtracker/teams/${params.id}/`, {
+        method: "DELETE",
+        credentials: 'include',
+        headers: {
+          "X-CSRFToken": csrftoken,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete team')
+      }
+
+      showToast("Team deleted successfully", 'success')
+      router.push("/dashboard/teams")
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to delete team", 'error')
+      setShowDeleteConfirm(false)
+    }
+  }
+
+  const handleRemoveMember = async (memberId: number) => {
+    try {
+      if (!team) return
+      if (!csrftoken) {
+        throw new Error("CSRF token not found")
+      }
+
+      const updatedMembers = team.team_members.filter(member => member.id !== memberId)
+
+      const response = await fetch(`http://127.0.0.1:8000/bugtracker/teams/${team.id}/`, {
+        method: "PUT",
+        credentials: 'include',
+        headers: {
+          "X-CSRFToken": csrftoken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: team.name,
+          description: team.description,
+          team_members: updatedMembers.map(member => member.name)
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to remove member')
+      }
+
+      showToast("Member removed successfully", 'success')
+      fetchTeam() // Refetch data
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to remove member", 'error')
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
+  if (!team) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <p>Team not found</p>
+        <Button asChild>
+          <Link href="/dashboard/teams">Back to Teams</Link>
+        </Button>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Toast Notifications */}
+      <div className="fixed top-4 right-4 z-[1000] space-y-2">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`p-4 rounded-md shadow-lg ${
+              toast.type === 'success' 
+                ? 'bg-green-100 text-green-800 border border-green-200'
+                : 'bg-red-100 text-red-800 border border-red-200'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span>{toast.message}</span>
+              <button 
+                onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                className="ml-4"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" asChild>
-            <Link href={`/dashboard/teams/${params.id}`}>
+            <Link href={`/dashboard/teams/${team.id}`}>
               <ArrowLeft className="h-4 w-4" />
               <span className="sr-only">Back to Team</span>
             </Link>
@@ -146,9 +314,6 @@ export default function TeamSettingsPage({ params }: { params: { id: string } })
           <TabsTrigger value="members" className="rounded-lg">
             Members
           </TabsTrigger>
-          <TabsTrigger value="permissions" className="rounded-lg">
-            Permissions
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
@@ -162,8 +327,8 @@ export default function TeamSettingsPage({ params }: { params: { id: string } })
                 <Label htmlFor="team-name">Team Name</Label>
                 <Input
                   id="team-name"
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
+                  value={team.name}
+                  onChange={(e) => setTeam({...team, name: e.target.value})}
                   className="max-w-md"
                 />
               </div>
@@ -171,22 +336,11 @@ export default function TeamSettingsPage({ params }: { params: { id: string } })
                 <Label htmlFor="team-description">Description</Label>
                 <Textarea
                   id="team-description"
-                  value={teamDescription}
-                  onChange={(e) => setTeamDescription(e.target.value)}
+                  value={team.description}
+                  onChange={(e) => setTeam({...team, description: e.target.value})}
                   className="max-w-md"
                   rows={3}
                 />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between max-w-md">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="public-team">Public Team</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Make this team accessible to all users in your organization
-                    </p>
-                  </div>
-                  <Switch id="public-team" checked={isPublic} onCheckedChange={setIsPublic} />
-                </div>
               </div>
             </CardContent>
             <CardFooter>
@@ -220,7 +374,7 @@ export default function TeamSettingsPage({ params }: { params: { id: string } })
                       This will permanently delete the team and all associated data
                     </p>
                   </div>
-                  <AlertDialog>
+                  <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" className="rounded-lg">
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -231,7 +385,7 @@ export default function TeamSettingsPage({ params }: { params: { id: string } })
                       <AlertDialogHeader>
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will permanently delete the "{teamName}" team and all of its data. This action cannot be
+                          This will permanently delete the "{team.name}" team and all of its data. This action cannot be
                           undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
@@ -261,13 +415,13 @@ export default function TeamSettingsPage({ params }: { params: { id: string } })
                   <DialogTrigger asChild>
                     <Button className="rounded-lg">
                       <UserPlus className="mr-2 h-4 w-4" />
-                      Invite Member
+                      Add Member
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Invite New Member</DialogTitle>
-                      <DialogDescription>Send an invitation to join the team</DialogDescription>
+                      <DialogTitle>Add New Member</DialogTitle>
+                      <DialogDescription>Add a new member to this team</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleInviteUser}>
                       <div className="space-y-4 py-4">
@@ -282,28 +436,10 @@ export default function TeamSettingsPage({ params }: { params: { id: string } })
                             required
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="role">Role</Label>
-                          <Select value={inviteRole} onValueChange={setInviteRole}>
-                            <SelectTrigger id="role">
-                              <SelectValue placeholder="Select role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="admin">Admin</SelectItem>
-                              <SelectItem value="member">Member</SelectItem>
-                              <SelectItem value="viewer">Viewer (Read Only)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            <Info className="inline-block h-3 w-3 mr-1" />
-                            Admins can manage team settings and members. Members can create and edit errors. Viewers can
-                            only view errors.
-                          </p>
-                        </div>
                       </div>
                       <DialogFooter>
                         <Button type="submit" className="rounded-lg">
-                          Send Invitation
+                          Add Member
                         </Button>
                       </DialogFooter>
                     </form>
@@ -313,114 +449,45 @@ export default function TeamSettingsPage({ params }: { params: { id: string } })
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {members.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={member.avatar || "/placeholder.svg"} alt={member.name} />
-                        <AvatarFallback>{member.initials}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{member.name}</div>
-                        <div className="text-sm text-muted-foreground">{member.email}</div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="secondary" className="text-xs">
-                            {member.role === "admin" ? "Admin" : member.role === "member" ? "Member" : "Viewer"}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">Joined {member.joinedAt}</span>
+                {team.team_members.map((member) => {
+                  const initials = member.name.split(' ').map(n => n[0]).join('').toUpperCase()
+                  
+                  return (
+                    <div key={member.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-muted text-foreground">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium">{member.name}</div>
                         </div>
                       </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">More</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => router.push(`/profile/${member.id}`)}>
+                            View profile
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-red-500"
+                            onClick={() => handleRemoveMember(member.id)}
+                          >
+                            Remove from team
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">More</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View profile</DropdownMenuItem>
-                        <DropdownMenuItem>
-                          Change role to{" "}
-                          {member.role === "admin" ? "Member" : member.role === "member" ? "Admin" : "Member"}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-500">Remove from team</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </CardContent>
-          </Card>
-
-          <Card className="border-border/40 shadow-sm">
-            <CardHeader>
-              <CardTitle>Pending Invitations</CardTitle>
-              <CardDescription>Invitations that have not been accepted yet</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="py-8 text-center">
-                <p className="text-muted-foreground">No pending invitations</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="permissions" className="space-y-4">
-          <Card className="border-border/40 shadow-sm">
-            <CardHeader>
-              <CardTitle>Team Permissions</CardTitle>
-              <CardDescription>Configure access rights for team members</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium mb-4">Role Capabilities</h3>
-                <div className="rounded-lg border overflow-hidden">
-                  <div className="grid grid-cols-4 gap-4 p-4 bg-muted/50 font-medium">
-                    <div>Permission</div>
-                    <div className="text-center">Admin</div>
-                    <div className="text-center">Member</div>
-                    <div className="text-center">Viewer</div>
-                  </div>
-                  <Separator />
-                  {[
-                    { name: "View errors and solutions", admin: true, member: true, viewer: true },
-                    { name: "Log new errors", admin: true, member: true, viewer: false },
-                    { name: "Edit errors", admin: true, member: true, viewer: false },
-                    { name: "Delete errors", admin: true, member: false, viewer: false },
-                    { name: "Assign errors", admin: true, member: true, viewer: false },
-                    { name: "Manage team settings", admin: true, member: false, viewer: false },
-                    { name: "Invite new members", admin: true, member: false, viewer: false },
-                    { name: "Remove team members", admin: true, member: false, viewer: false },
-                  ].map((permission, i) => (
-                    <div key={i} className="grid grid-cols-4 gap-4 p-4 border-t">
-                      <div>{permission.name}</div>
-                      <div className="text-center">{permission.admin ? "✓" : "✗"}</div>
-                      <div className="text-center">{permission.member ? "✓" : "✗"}</div>
-                      <div className="text-center">{permission.viewer ? "✓" : "✗"}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Custom Permissions</h3>
-                <p className="text-sm text-muted-foreground">
-                  Set custom permissions for specific team members beyond their roles
-                </p>
-                <Button className="rounded-lg" variant="outline">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Custom Permission
-                </Button>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button className="rounded-lg">
-                <Save className="mr-2 h-4 w-4" />
-                Save Permission Settings
-              </Button>
-            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>
