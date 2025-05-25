@@ -42,7 +42,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Alert, AlertDescription, AlertTitle, } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 import { getCookie } from "@/utils/cookies";
 import { useAuth } from "@/hooks/useAuth";
@@ -63,12 +63,12 @@ export default function DashboardLayout({
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const { authenticated, username, accountType, loading } = useAuth();
 
-  const user = { 
+  const user = {
     accountType: "premium",
     name: "John Doe",
     email: "john.doe@example.com",
     initials: "JD",
-    avatarUrl: "/placeholder.svg"
+    avatarUrl: "/placeholder.svg",
   };
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function DashboardLayout({
     setLogoutError(null);
 
     try {
-      const csrftoken = getCookie('csrftoken');
+      const csrftoken = getCookie("csrftoken");
       if (!csrftoken) {
         throw new Error("CSRF token not found");
       }
@@ -105,7 +105,9 @@ export default function DashboardLayout({
       // Redirect to login page after successful logout
       router.push("/");
     } catch (err) {
-      setLogoutError(err instanceof Error ? err.message : "An unknown error occurred");
+      setLogoutError(
+        err instanceof Error ? err.message : "An unknown error occurred"
+      );
     } finally {
       setIsLoggingOut(false);
     }
@@ -302,9 +304,7 @@ export default function DashboardLayout({
 
         <div className="flex flex-1">
           {/* Desktop Sidebar */}
-          <aside
-            className="hidden lg:flex w-64 shrink-0 flex-col border-r bg-background h-screen sticky top-0"
-          >
+          <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r bg-background h-screen sticky top-0">
             <div className="px-6 py-5 flex items-center gap-2 font-bold border-b shrink-0">
               <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
                 <Bug className="size-5" />
@@ -376,10 +376,7 @@ export default function DashboardLayout({
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="w-full justify-start">
                         <Avatar className="mr-2 h-6 w-6">
-                          <AvatarImage
-                            src={user.avatarUrl}
-                            alt={user.name}
-                          />
+                          <AvatarImage src={user.avatarUrl} alt={user.name} />
                           <AvatarFallback>{user.initials}</AvatarFallback>
                         </Avatar>
                         <span>{user.name}</span>
@@ -413,7 +410,9 @@ export default function DashboardLayout({
                         )}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setIsLogoutDialogOpen(true)}>
+                      <DropdownMenuItem
+                        onClick={() => setIsLogoutDialogOpen(true)}
+                      >
                         <LogOut className="mr-2 h-4 w-4" />
                         <span>Log out</span>
                       </DropdownMenuItem>
@@ -428,12 +427,12 @@ export default function DashboardLayout({
           <main className="flex-1">
             <div className="hidden h-16 items-center gap-4 border-b bg-background px-6 lg:flex">
               <nav className="flex-1">
-                <form className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <form className="relative w-full max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input
                     type="search"
                     placeholder="Search errors..."
-                    className="w-full max-w-sm rounded-lg pl-8"
+                    className="w-full rounded-lg border border-gray-300 bg-background px-3 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
                   />
                 </form>
               </nav>
@@ -477,7 +476,9 @@ export default function DashboardLayout({
                       <Link href="/settings">Settings</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setIsLogoutDialogOpen(true)}>
+                    <DropdownMenuItem
+                      onClick={() => setIsLogoutDialogOpen(true)}
+                    >
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
                     </DropdownMenuItem>
@@ -498,19 +499,20 @@ export default function DashboardLayout({
           <DialogHeader>
             <DialogTitle>Confirm Logout</DialogTitle>
             <DialogDescription>
-              Are you sure you want to log out? You'll need to sign in again to access your account.
+              Are you sure you want to log out? You'll need to sign in again to
+              access your account.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsLogoutDialogOpen(false)}
               disabled={isLoggingOut}
             >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleLogout}
               disabled={isLoggingOut}
             >
