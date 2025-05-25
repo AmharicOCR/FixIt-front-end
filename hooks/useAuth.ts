@@ -6,11 +6,13 @@ export function useAuth() {
     authenticated: boolean;
     username: string | null;
     accountType: string | null;
+    email: string | null;
     loading: boolean;
   }>({
     authenticated: false,
     username: null,
     accountType: null,
+    email: null,
     loading: true,
   });
 
@@ -28,6 +30,7 @@ export function useAuth() {
             authenticated: data.authenticated,
             username: data.username || null,
             accountType: data.accountType || null,
+            email: data.email || null,
             loading: false,
           });
         } else {
@@ -35,6 +38,7 @@ export function useAuth() {
             authenticated: false,
             username: null,
             accountType: null,
+            email: null,
             loading: false,
           });
         }
@@ -44,6 +48,7 @@ export function useAuth() {
           authenticated: false,
           username: null,
           accountType: null,
+            email: null,
           loading: false,
         });
       }
