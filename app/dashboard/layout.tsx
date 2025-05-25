@@ -45,6 +45,7 @@ import {
 import { Alert, AlertDescription, AlertTitle, } from "@/components/ui/alert";
 
 import { getCookie } from "@/utils/cookies";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function DashboardLayout({
   children,
@@ -60,6 +61,7 @@ export default function DashboardLayout({
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+  const { authenticated, username, accountType, loading } = useAuth();
 
   const user = { 
     accountType: "premium",
@@ -256,7 +258,7 @@ export default function DashboardLayout({
                 >
                   My Errors
                 </NavItem>
-                {user.accountType === "premium" && (
+                {!loading && authenticated && accountType === "premium" && (
                   <NavItem
                     href="/dashboard/teams"
                     icon={Users}
@@ -342,7 +344,7 @@ export default function DashboardLayout({
                   >
                     My Errors
                   </NavItem>
-                  {user.accountType === "premium" && (
+                  {!loading && authenticated && accountType === "premium" && (
                     <NavItem
                       href="/dashboard/teams"
                       icon={Users}

@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-
+import { useAuth } from "@/hooks/useAuth";
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [showFilters, setShowFilters] = useState(false)
@@ -24,7 +24,7 @@ export default function SearchPage() {
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([])
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([])
   const [sortBy, setSortBy] = useState("newest")
-
+  const { authenticated, username, accountType, loading } = useAuth();
   // Mock search results - in a real app, this would be fetched based on search and filters
   const searchResults = [
     {
@@ -472,7 +472,11 @@ export default function SearchPage() {
                               <DropdownMenuItem asChild>
                                 <Link href={`/dashboard/error-details/${result.id}`}>View details</Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem>Assign to me</DropdownMenuItem>
+                              {!loading && authenticated && accountType === "premium" && activeTab === "created" && (
+                            <DropdownMenuItem>
+                              Assign to someone
+                            </DropdownMenuItem>
+                          )}
                               <DropdownMenuItem>Mark as resolved</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
