@@ -432,7 +432,7 @@ export default function DashboardLayout({
                   <input
                     type="search"
                     placeholder="Search errors..."
-                    className="w-full rounded-lg border border-gray-300 bg-background px-3 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
+                    className="w-full rounded-lg border border/40 bg-background px-3 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
                   />
                 </form>
               </nav>
