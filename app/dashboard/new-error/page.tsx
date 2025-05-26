@@ -299,6 +299,7 @@ export default function NewErrorPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
+        console.error('Error submitting form:', errorData)
         throw new Error(errorData.message || 'Failed to submit error report')
       }
 
@@ -309,7 +310,7 @@ export default function NewErrorPage() {
         "success"
       )
       // Redirect to dashboard or error details page
-      window.location.href = `/errors/${data.id}`
+      window.location.href = `/dashboard/error-details/${data.id}`
     } catch (error) {
       console.error('Error submitting form:', error)
       showCustomToast(
@@ -572,7 +573,7 @@ export default function NewErrorPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <Tabs defaultValue="details" className="space-y-6" onValueChange={setActiveTab}>
+            <Tabs value={activeTab} defaultValue="details" className="space-y-6" onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-3 rounded-lg">
                 <TabsTrigger value="details" className="rounded-lg">
                   Basic Details

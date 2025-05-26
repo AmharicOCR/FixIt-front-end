@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Bug, Filter, MoreHorizontal, SearchIcon, ThumbsUp, ArrowLeft, Menu, X, Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { useTheme } from "next-themes"
 
+interface ErrorItem {
+  id: string
+  title: string
+  description: string
+  category: string
+  priority: string
+  status: string
+  reportedBy: {
+    name: string
+    avatar: string
+    initials: string
+  }
+  reportedAt: string
+  programmingLanguage: string
+  tags: string[]
+  upvotes: number
+}
+
 export default function PublicErrorsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [showFilters, setShowFilters] = useState(false)
@@ -27,130 +45,28 @@ export default function PublicErrorsPage() {
   const [sortBy, setSortBy] = useState("newest")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchResults, setSearchResults] = useState<ErrorItem[]>([])
 
-  // Mock search results - in a real app, this would be fetched based on search and filters
-  const searchResults = [
-    {
-      id: "err-001",
-      title: "TypeError in React useEffect Hook",
-      description: "Cannot read property 'data' of undefined in useEffect dependency array",
-      category: "React",
-      priority: "High",
-      status: "Open",
-      reportedBy: {
-        name: "John Assefa",
-        avatar: "/placeholder.svg",
-        initials: "JA",
-      },
-      reportedAt: "2 hours ago",
-      programmingLanguage: "JavaScript",
-      tags: ["react", "useEffect", "api"],
-      upvotes: 12,
-    },
-    {
-      id: "err-002",
-      title: "Database Connection Pool Exhausted",
-      description: "PostgreSQL connection pool is being exhausted during peak traffic",
-      category: "Database",
-      priority: "Critical",
-      status: "In Progress",
-      reportedBy: {
-        name: "Netsanet Alemu",
-        avatar: "/placeholder.svg",
-        initials: "NA",
-      },
-      reportedAt: "5 hours ago",
-      programmingLanguage: "Python",
-      tags: ["postgresql", "database", "connection-pool"],
-      upvotes: 24,
-    },
-    {
-      id: "err-003",
-      title: "CSS Grid Layout Overflow on Mobile",
-      description: "Grid layout causes horizontal overflow on mobile devices",
-      category: "CSS",
-      priority: "Medium",
-      status: "Open",
-      reportedBy: {
-        name: "Abiy Shiferaw",
-        avatar: "/placeholder.svg",
-        initials: "AS",
-      },
-      reportedAt: "Yesterday",
-      programmingLanguage: "CSS",
-      tags: ["css", "responsive", "mobile"],
-      upvotes: 8,
-    },
-    {
-      id: "err-004",
-      title: "JWT Authentication Failure",
-      description: "Token validation fails intermittently in production environment",
-      category: "Authentication",
-      priority: "High",
-      status: "Resolved",
-      reportedBy: {
-        name: "John Assefa",
-        avatar: "/placeholder.svg",
-        initials: "JA",
-      },
-      reportedAt: "2 days ago",
-      programmingLanguage: "JavaScript",
-      tags: ["jwt", "authentication", "security"],
-      upvotes: 32,
-    },
-    {
-      id: "err-005",
-      title: "Memory Leak in Service Worker",
-      description: "Service worker is causing memory leaks after multiple refreshes",
-      category: "Performance",
-      priority: "Medium",
-      status: "In Progress",
-      reportedBy: {
-        name: "Abiy Shiferaw",
-        avatar: "/placeholder.svg",
-        initials: "AS",
-      },
-      reportedAt: "3 days ago",
-      programmingLanguage: "JavaScript",
-      tags: ["service-worker", "memory-leak", "performance"],
-      upvotes: 15,
-    },
-    {
-      id: "err-006",
-      title: "API Rate Limiting Issue",
-      description: "Third-party API rate limiting causing intermittent failures",
-      category: "API",
-      priority: "High",
-      status: "Open",
-      reportedBy: {
-        name: "Netsanet Alemu",
-        avatar: "/placeholder.svg",
-        initials: "NA",
-      },
-      reportedAt: "4 days ago",
-      programmingLanguage: "Python",
-      tags: ["api", "rate-limiting", "third-party"],
-      upvotes: 19,
-    },
-    {
-      id: "err-007",
-      title: "Redux State Management Bug",
-      description: "State not updating correctly after async action completion",
-      category: "React",
-      priority: "Medium",
-      status: "Resolved",
-      reportedBy: {
-        name: "Abiy Shiferaw",
-        avatar: "/placeholder.svg",
-        initials: "AS",
-      },
-      reportedAt: "1 week ago",
-      programmingLanguage: "JavaScript",
-      tags: ["redux", "react", "state-management"],
-      upvotes: 27,
-    },
-  ]
+  useEffect(() => {
+    const fetchPublicErrors = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:8000/bugtracker/public-errors/')
+        if (!response.ok) {
+          throw new Error('Failed to fetch public errors')
+        }
+        const data = await response.json()
+        setSearchResults(data)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPublicErrors()
+  }, [])
 
   const handleCategoryChange = (category: string, checked: boolean) => {
     if (checked) {
@@ -209,15 +125,97 @@ export default function PublicErrorsPage() {
     setTheme(theme === "dark" ? "light" : "dark")
   }
 
+  // Extract unique values for filter options from the API data
+  const allCategories = Array.from(new Set(searchResults.map(result => result.category)))
+  const allStatuses = Array.from(new Set(searchResults.map(result => result.status)))
+  const allPriorities = Array.from(new Set(searchResults.map(result => result.priority)))
+  const allLanguages = Array.from(new Set(searchResults.map(result => result.programmingLanguage)))
+
   // Filter results based on selected filters
   const filteredResults = searchResults.filter((result) => {
     const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(result.category)
     const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(result.status)
     const matchesPriority = selectedPriorities.length === 0 || selectedPriorities.includes(result.priority)
     const matchesLanguage = selectedLanguages.length === 0 || selectedLanguages.includes(result.programmingLanguage)
+    const matchesSearch = searchQuery === "" || 
+      result.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      result.description.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      result.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
 
-    return matchesCategory && matchesStatus && matchesPriority && matchesLanguage
+    return matchesCategory && matchesStatus && matchesPriority && matchesLanguage && matchesSearch
   })
+
+  // Sort results based on selected sort option
+  const sortedResults = [...filteredResults].sort((a, b) => {
+    if (sortBy === "newest") {
+      return new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime()
+    } else if (sortBy === "oldest") {
+      return new Date(a.reportedAt).getTime() - new Date(b.reportedAt).getTime()
+    } else if (sortBy === "priority") {
+      const priorityOrder = ["Critical", "High", "Medium", "Low"]
+      return priorityOrder.indexOf(a.priority) - priorityOrder.indexOf(b.priority)
+    } else if (sortBy === "upvotes") {
+      return b.upvotes - a.upvotes
+    }
+    return 0
+  })
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col">
+        <header className="sticky top-0 z-50 w-full backdrop-blur-lg transition-all duration-300 bg-background/80 shadow-sm">
+          <div className="container flex h-16 items-center justify-between">
+            <div className="flex items-center gap-2 font-bold">
+              <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
+                <Bug className="size-5" />
+              </div>
+              <span>FixIt</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full">
+                {theme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
+              </Button>
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 container py-8 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-muted-foreground">Loading public errors...</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col">
+        <header className="sticky top-0 z-50 w-full backdrop-blur-lg transition-all duration-300 bg-background/80 shadow-sm">
+          <div className="container flex h-16 items-center justify-between">
+            <div className="flex items-center gap-2 font-bold">
+              <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
+                <Bug className="size-5" />
+              </div>
+              <span>FixIt</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full">
+                {theme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
+              </Button>
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 container py-8 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-500">Error loading public errors: {error}</p>
+            <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-[100dvh] flex-col">
@@ -343,7 +341,7 @@ export default function PublicErrorsPage() {
                     <AccordionItem value="category" className="border-b-0">
                       <AccordionTrigger className="py-2 text-sm font-medium">Categories</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-1 pb-3">
-                        {["React", "Database", "CSS", "Authentication", "Performance", "API"].map((category) => (
+                        {allCategories.map((category) => (
                           <div key={category} className="flex items-center space-x-2">
                             <Checkbox
                               id={`category-${category}`}
@@ -361,7 +359,7 @@ export default function PublicErrorsPage() {
                     <AccordionItem value="status" className="border-b-0">
                       <AccordionTrigger className="py-2 text-sm font-medium">Status</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-1 pb-3">
-                        {["Open", "In Progress", "Resolved"].map((status) => (
+                        {allStatuses.map((status) => (
                           <div key={status} className="flex items-center space-x-2">
                             <Checkbox
                               id={`status-${status}`}
@@ -379,7 +377,7 @@ export default function PublicErrorsPage() {
                     <AccordionItem value="priority" className="border-b-0">
                       <AccordionTrigger className="py-2 text-sm font-medium">Priority</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-1 pb-3">
-                        {["Critical", "High", "Medium", "Low"].map((priority) => (
+                        {allPriorities.map((priority) => (
                           <div key={priority} className="flex items-center space-x-2">
                             <Checkbox
                               id={`priority-${priority}`}
@@ -397,7 +395,7 @@ export default function PublicErrorsPage() {
                     <AccordionItem value="language" className="border-b-0">
                       <AccordionTrigger className="py-2 text-sm font-medium">Programming Language</AccordionTrigger>
                       <AccordionContent className="space-y-2 pt-1 pb-3">
-                        {["JavaScript", "Python", "CSS", "Java", "C#", "PHP"].map((language) => (
+                        {allLanguages.map((language) => (
                           <div key={language} className="flex items-center space-x-2">
                             <Checkbox
                               id={`language-${language}`}
@@ -498,13 +496,13 @@ export default function PublicErrorsPage() {
               </div>
 
               <div className="space-y-4">
-                <div className="text-sm text-muted-foreground">Showing {filteredResults.length} results</div>
+                <div className="text-sm text-muted-foreground">Showing {sortedResults.length} results</div>
 
                 <Card className="border-border/40 shadow-sm">
                   <CardContent className="p-0">
                     <div className="divide-y">
-                      {filteredResults.length > 0 ? (
-                        filteredResults.map((result) => (
+                      {sortedResults.length > 0 ? (
+                        sortedResults.map((result) => (
                           <div
                             key={result.id}
                             className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-muted/50"
@@ -615,10 +613,10 @@ export default function PublicErrorsPage() {
                       )}
                     </div>
                   </CardContent>
-                  {filteredResults.length > 0 && (
+                  {sortedResults.length > 0 && (
                     <CardFooter className="border-t px-6 py-4 flex justify-between">
                       <div className="text-sm text-muted-foreground">
-                        Showing {filteredResults.length} of {searchResults.length} errors
+                        Showing {sortedResults.length} of {searchResults.length} errors
                       </div>
                       <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" disabled>

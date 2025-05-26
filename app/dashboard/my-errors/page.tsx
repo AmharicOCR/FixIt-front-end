@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Bug, Filter, MoreHorizontal, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,100 +22,84 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+import { getCookie } from "@/utils/cookies";
+
+interface ErrorItem {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  priority: string;
+  status: string;
+  created_at: string;
+  assigned_by?: {
+    name: string;
+    avatar?: string;
+    initials: string;
+  };
+}
 
 export default function MyErrorsPage() {
   const [activeTab, setActiveTab] = useState("created");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
-  const { authenticated, username, accountType, loading } = useAuth();
+  const [createdErrors, setCreatedErrors] = useState<ErrorItem[]>([]);
+  const [assignedErrors, setAssignedErrors] = useState<ErrorItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { authenticated, username, accountType, loading: authLoading } = useAuth();
 
-  // Mock data for errors created by user
-  const createdErrors = [
-    {
-      id: "err-001",
-      title: "TypeError in React useEffect Hook",
-      description:
-        "Cannot read property 'data' of undefined in useEffect dependency array",
-      category: "React",
-      priority: "High",
-      status: "Open",
-      createdAt: "2 hours ago",
-    },
-    {
-      id: "err-002",
-      title: "CSS Grid Layout Overflow on Mobile",
-      description: "Grid layout causes horizontal overflow on mobile devices",
-      category: "CSS",
-      priority: "Medium",
-      status: "Open",
-      createdAt: "Yesterday",
-    },
-    {
-      id: "err-003",
-      title: "JWT Authentication Failure",
-      description:
-        "Token validation fails intermittently in production environment",
-      category: "Authentication",
-      priority: "High",
-      status: "Resolved",
-      createdAt: "2 days ago",
-    },
-  ];
+  const csrfToken = getCookie("csrftoken");
 
-  // Mock data for errors assigned to user
-  const assignedErrors = [
-    {
-      id: "err-004",
-      title: "API Rate Limiting Issue",
-      description:
-        "Third-party API rate limiting causing intermittent failures",
-      category: "API",
-      priority: "High",
-      status: "In Progress",
-      assignedBy: {
-        name: "Netsanet Alemu",
-        avatar: "/placeholder.svg",
-        initials: "NA",
-      },
-      assignedAt: "Yesterday",
-    },
-    {
-      id: "err-005",
-      title: "Redux State Management Bug",
-      description: "State not updating correctly after async action completion",
-      category: "React",
-      priority: "Medium",
-      status: "Open",
-      assignedBy: {
-        name: "Abiy Shiferaw",
-        avatar: "/placeholder.svg",
-        initials: "AS",
-      },
-      assignedAt: "2 days ago",
-    },
-    {
-      id: "err-006",
-      title: "Webpack Build Optimization",
-      description:
-        "Build times are excessive and bundle size needs optimization",
-      category: "Performance",
-      priority: "Low",
-      status: "Open",
-      assignedBy: {
-        name: "John Assefa",
-        avatar: "/placeholder.svg",
-        initials: "JA",
-      },
-      assignedAt: "3 days ago",
-    },
-  ];
+  useEffect(() => {
+    const fetchErrors = async () => {
+      if (!authenticated || !csrfToken) return;
+
+      try {
+        const response = await fetch("http://127.0.0.1:8000/bugtracker/my-errors/", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch errors");
+        }
+
+        const data = await response.json();
+        console.log(data)
+        setCreatedErrors(data || []);
+        setAssignedErrors(data || []);
+      } catch (error) {
+        console.error("Error fetching errors:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchErrors();
+  }, [authenticated, csrfToken]);
+
+  // Format date to relative time (e.g., "2 hours ago")
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return "Just now";
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
 
   // Filter errors based on current filters
-  const filterErrors = (errors: any[]) => {
+  const filterErrors = (errors: ErrorItem[]) => {
     return errors.filter((error) => {
       if (statusFilter !== "all" && error.status !== statusFilter) return false;
-      if (priorityFilter !== "all" && error.priority !== priorityFilter)
-        return false;
+      if (priorityFilter !== "all" && error.priority !== priorityFilter) return false;
       return true;
     });
   };
@@ -125,8 +109,17 @@ export default function MyErrorsPage() {
   const filteredAssignedErrors = filterErrors(assignedErrors);
 
   // Get active errors list based on current tab
-  const activeErrors =
-    activeTab === "created" ? filteredCreatedErrors : filteredAssignedErrors;
+  const activeErrors = activeTab === "created" ? filteredCreatedErrors : filteredAssignedErrors;
+
+  if (isLoading || authLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p>Loading your errors...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -158,7 +151,7 @@ export default function MyErrorsPage() {
             className="w-full sm:w-auto"
             onValueChange={setActiveTab}
           >
-            {!loading && authenticated && accountType === "premium" && (
+            {authenticated && accountType === "premium" && (
               <TabsList className="grid w-full grid-cols-2 sm:w-[400px]">
                 <TabsTrigger value="created">Created By Me</TabsTrigger>
                 <TabsTrigger value="assigned">Assigned To Me</TabsTrigger>
@@ -275,23 +268,21 @@ export default function MyErrorsPage() {
                     </div>
                     <div className="flex items-center gap-2 ml-14 sm:ml-0 mt-2 sm:mt-0">
                       <div className="flex items-center text-xs text-muted-foreground">
-                        {activeTab === "assigned" && error.assignedBy && (
+                        {activeTab === "assigned" && error.assigned_by && (
                           <Avatar className="h-6 w-6 mr-2">
                             <AvatarImage
-                              src={
-                                error.assignedBy.avatar || "/placeholder.svg"
-                              }
-                              alt={error.assignedBy.name}
+                              src={error.assigned_by.avatar || "/placeholder.svg"}
+                              alt={error.assigned_by.name}
                             />
                             <AvatarFallback>
-                              {error.assignedBy.initials}
+                              {error.assigned_by.initials}
                             </AvatarFallback>
                           </Avatar>
                         )}
                         <span className="sr-only sm:not-sr-only">
                           {activeTab === "created"
-                            ? error.createdAt
-                            : `Assigned ${error.assignedAt}`}
+                            ? formatRelativeTime(error.created_at)
+                            : error.assigned_by && `Assigned ${formatRelativeTime(error.created_at)}`}
                         </span>
                       </div>
                       <DropdownMenu>
@@ -313,7 +304,7 @@ export default function MyErrorsPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem>Update status</DropdownMenuItem>
                           <DropdownMenuItem>Add solution</DropdownMenuItem>
-                          {!loading && authenticated && accountType === "premium" && activeTab === "created" && (
+                          {authenticated && accountType === "premium" && activeTab === "created" && (
                             <DropdownMenuItem>
                               Assign to someone
                             </DropdownMenuItem>
