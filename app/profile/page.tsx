@@ -35,20 +35,26 @@ export default function ProfilePage() {
       upvotesReceived: 0,
     },
   })
+
   type RecentActivity = {
     id: string
     type: string
     title: string
     timestamp: string
   }
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
+
   type ErrorItem = {
-    id: string
+    id: number
     title: string
     status: string
     priority: string
-    timestamp: string
+    created_at: string
+    language: string
+    framework: string
+    category: string
   }
+
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [errors, setErrors] = useState<ErrorItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -61,7 +67,8 @@ export default function ProfilePage() {
           throw new Error("CSRF token not found")
         }
         
-        const response = await fetch("http://127.0.0.1:8000/user/profile/", {
+        // Fetch user profile data
+        const profileResponse = await fetch("http://127.0.0.1:8000/user/profile/", {
           method: "GET",
           credentials: "include",
           headers: {
@@ -70,73 +77,70 @@ export default function ProfilePage() {
           },
         })
 
-        if (!response.ok) {
+        if (!profileResponse.ok) {
           throw new Error("Failed to fetch user data")
         }
 
-        const data = await response.json()
+        const profileData = await profileResponse.json()
         
         // Format the data to match our UI structure
         setUser({
-          name: `${data.first_name} ${data.last_name}`,
-          username: data.username,
-          avatar: data.profile_picture || "/placeholder.svg",
-          initials: `${data.first_name.charAt(0)}${data.last_name.charAt(0)}`,
-          bio: data.bio || "",
-          jobTitle: data.jobtitle || "",
-          company: data.company || "",
-          location: data.location || "",
-          github: data.github || "",
-          website: data.website || "",
-          email: data.email || "",
-          joined: data.date_joined ? new Date(data.date_joined).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "",
-          skills: data.skills ? data.skills.split(",").map((s: string) => s.trim()) : [],
+          name: `${profileData.first_name} ${profileData.last_name}`,
+          username: profileData.username,
+          avatar: profileData.profile_picture || "/placeholder.svg",
+          initials: `${profileData.first_name.charAt(0)}${profileData.last_name.charAt(0)}`,
+          bio: profileData.bio || "",
+          jobTitle: profileData.jobtitle || "",
+          company: profileData.company || "",
+          location: profileData.location || "",
+          github: profileData.github || "",
+          website: profileData.website || "",
+          email: profileData.email || "",
+          joined: profileData.date_joined ? new Date(profileData.date_joined).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "",
+          skills: profileData.skills ? profileData.skills.split(",").map((s: string) => s.trim()) : [],
           stats: {
-            errorsReported: data.stats?.errors_reported || 0,
-            errorsSolved: data.stats?.errors_solved || 0,
-            solutionsSubmitted: data.stats?.solutions_submitted || 0,
-            upvotesReceived: data.stats?.upvotes_received || 0,
+            errorsReported: profileData.stats?.errors_reported || 0,
+            errorsSolved: profileData.stats?.errors_solved || 0,
+            solutionsSubmitted: profileData.stats?.solutions_submitted || 0,
+            upvotesReceived: profileData.stats?.upvotes_received || 0,
           }
         })
 
-        // TODO: Fetch recent activity and errors from API if available
-        setRecentActivity([
-          {
-            id: "1",
-            type: "error_resolved",
-            title: "TypeError in React useEffect Hook",
-            timestamp: "2 hours ago",
+        // Fetch user's errors
+        const errorsResponse = await fetch("http://127.0.0.1:8000/bugtracker/my-errors/", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrftoken,
           },
-          {
-            id: "2",
-            type: "solution_added",
-            title: "Database Connection Pool Exhausted",
-            timestamp: "Yesterday",
-          },
-          {
-            id: "3",
-            type: "comment_added",
-            title: "JWT Authentication Failure",
-            timestamp: "3 days ago",
-          },
-        ])
+        })
 
-        setErrors([
-          {
-            id: "err-001",
-            title: "TypeError in React useEffect Hook",
-            status: "Resolved",
-            priority: "High",
-            timestamp: "1 week ago",
-          },
-          {
-            id: "err-002",
-            title: "CSS Grid Layout Overflow on Mobile",
-            status: "Open",
-            priority: "Medium",
-            timestamp: "1 week ago",
-          },
-        ])
+        if (!errorsResponse.ok) {
+          throw new Error("Failed to fetch user errors")
+        }
+
+        const errorsData = await errorsResponse.json()
+        setErrors(errorsData.map((error: any) => ({
+          id: error.id,
+          title: error.title,
+          status: error.status,
+          priority: error.priority,
+          created_at: new Date(error.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          language: error.language,
+          framework: error.framework,
+          category: error.category
+        })))
+
+        // Generate recent activity based on errors
+        const activity = errorsData.slice(0, 3).map((error: any) => ({
+          id: error.id.toString(),
+          type: "error_reported",
+          title: error.title,
+          timestamp: formatTimeAgo(new Date(error.created_at))
+        }))
+
+        setRecentActivity(activity)
 
       } catch (err) {
         setError(err instanceof Error ? err.message : "An unknown error occurred")
@@ -147,6 +151,17 @@ export default function ProfilePage() {
 
     fetchUserData()
   }, [])
+
+  function formatTimeAgo(date: Date): string {
+    const now = new Date()
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+    
+    if (seconds < 60) return `${Math.floor(seconds)} seconds ago`
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`
+    if (seconds < 2592000) return `${Math.floor(seconds / 86400)} days ago`
+    return `${Math.floor(seconds / 2592000)} months ago`
+  }
 
   if (loading) {
     return (
@@ -390,30 +405,33 @@ export default function ProfilePage() {
                           <Badge
                             variant="outline"
                             className={`text-xs ${
-                              error.status === "Open"
+                              error.status === "open"
                                 ? "border-amber-500 text-amber-500"
-                                : error.status === "In Progress"
+                                : error.status === "in progress"
                                   ? "border-blue-500 text-blue-500"
                                   : "border-green-500 text-green-500"
                             }`}
                           >
-                            {error.status}
+                            {error.status.charAt(0).toUpperCase() + error.status.slice(1)}
                           </Badge>
                           <Badge
                             variant="outline"
                             className={`text-xs ${
-                              error.priority === "Critical"
+                              error.priority === "critical"
                                 ? "border-red-500 text-red-500"
-                                : error.priority === "High"
+                                : error.priority === "high"
                                   ? "border-amber-500 text-amber-500"
                                   : "border-blue-500 text-blue-500"
                             }`}
                           >
-                            {error.priority}
+                            {error.priority.charAt(0).toUpperCase() + error.priority.slice(1)}
+                          </Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            {error.language}
                           </Badge>
                         </div>
                       </div>
-                      <span className="text-xs text-muted-foreground">{error.timestamp}</span>
+                      <span className="text-xs text-muted-foreground">{error.created_at}</span>
                     </div>
                   ))}
                   {errors.length === 0 && (
