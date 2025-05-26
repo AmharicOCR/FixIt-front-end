@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Bug, CheckCircle2, Clock, MessageSquare, ThumbsUp, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -9,116 +10,93 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
+import { toast } from "@/components/ui/use-toast"
 
-export default function PublicErrorDetailsPage({ params }: { params: { id: string } }) {
+interface ErrorData {
+  id: number
+  created_by: string
+  tags: string[]
+  category: string
+  language: string
+  framework: string
+  solutions: {
+    id: number
+    title: string
+    solution: string
+    is_private: boolean
+    created_by: string
+    created_at: string
+  }[]
+  title: string
+  description: string
+  priority: string
+  status: string
+  environment: string
+  error_message: string
+  stack_trace: string
+  steps_to_reproduce: string
+  expected_behaviour: string
+  actual_behaviour: string
+  created_at: string
+  updated_at: string
+  comments: any[]
+  visible_to_public: boolean
+}
+
+export default function PublicErrorDetailsPage() {
+  const params = useParams()
+  const id = params.id as string
   const [activeTab, setActiveTab] = useState("details")
   const [upvoted, setUpvoted] = useState(false)
-  const [upvoteCount, setUpvoteCount] = useState(24)
+  const [upvoteCount, setUpvoteCount] = useState(0)
+  const [error, setError] = useState<ErrorData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Mock error data - in a real app, this would be fetched from an API
-  const error = {
-    id: params.id,
-    title: "TypeError in React useEffect Hook",
-    description:
-      "Cannot read property 'data' of undefined in useEffect dependency array. This occurs when trying to access nested properties of API response data before it's available.",
-    category: "React",
-    priority: "High",
-    status: "In Progress",
-    createdAt: "2023-05-15T10:30:00Z",
-    updatedAt: "2023-05-16T14:22:00Z",
-    reportedBy: {
-      name: "John Assefa",
-      avatar: "/placeholder.svg",
-      initials: "JA",
-    },
-    programmingLanguage: "JavaScript",
-    errorMessage: "TypeError: Cannot read property 'items' of undefined",
-    stackTrace: `TypeError: Cannot read property 'items' of undefined
-    at processData (App.js:42)
-    at Component (App.js:28)
-    at processChild (react-dom.development.js:13131)
-    at finishClassComponent (react-dom.development.js:13187)
-    at updateClassComponent (react-dom.development.js:13140)
-    at beginWork (react-dom.development.js:13855)
-    at HTMLUnknownElement.callCallback (react-dom.development.js:188)`,
-    stepsToReproduce:
-      "1. Navigate to the dashboard page\n2. Click on the 'Load Data' button\n3. The error appears in the console and the UI fails to render properly",
-    expectedBehavior: "The data should be displayed in a table format with proper error handling for missing data.",
-    actualBehavior: "The application crashes with a TypeError in the console.",
-    environment: "Development",
-    tags: ["react", "useEffect", "api", "frontend"],
-    isPublic: true,
-    comments: [
-      {
-        id: "1",
-        text: "I've seen this issue before. It's likely because you're trying to access the data before the API response is complete.",
-        author: {
-          name: "Netsanet Alemu",
-          avatar: "/placeholder.svg",
-          initials: "NA",
-        },
-        createdAt: "2023-05-15T11:45:00Z",
-      },
-      {
-        id: "2",
-        text: "Have you tried adding a conditional check before accessing the nested property?",
-        author: {
-          name: "John Assefa",
-          avatar: "/placeholder.svg",
-          initials: "JA",
-        },
-        createdAt: "2023-05-15T13:20:00Z",
-      },
-    ],
-    solutions: [
-      {
-        id: "1",
-        title: "Add conditional check in useEffect",
-        description:
-          "Add a conditional check before accessing nested properties to prevent the TypeError:\n\n```javascript\nuseEffect(() => {\n  if (data && data.items) {\n    // Now it's safe to access data.items\n    processItems(data.items);\n  }\n}, [data]);\n```",
-        author: {
-          name: "Abiy Shiferaw",
-          avatar: "/placeholder.svg",
-          initials: "AS",
-        },
-        createdAt: "2023-05-16T09:15:00Z",
-        upvotes: 5,
-        isAccepted: false,
-      },
-    ],
-    activity: [
-      {
-        id: "1",
-        type: "created",
-        user: {
-          name: "John Assefa",
-          avatar: "/placeholder.svg",
-          initials: "JA",
-        },
-        timestamp: "2023-05-15T10:30:00Z",
-      },
-      {
-        id: "2",
-        type: "comment_added",
-        user: {
-          name: "Netsanet Alemu",
-          avatar: "/placeholder.svg",
-          initials: "NA",
-        },
-        timestamp: "2023-05-15T11:45:00Z",
-      },
-      {
-        id: "3",
-        type: "solution_added",
-        user: {
-          name: "Abiy Shiferaw",
-          avatar: "/placeholder.svg",
-          initials: "AS",
-        },
-        timestamp: "2023-05-16T09:15:00Z",
-      },
-    ],
+  useEffect(() => {
+    const fetchErrorDetails = async () => {
+      try {
+        const response = await fetch(`http://127.0.0.1:8000/bugtracker/public-errors/${id}/`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch error details')
+        }
+        const data = await response.json()
+        setError(data)
+      } catch (err) {
+        setErrorMessage(err instanceof Error ? err.message : 'An unknown error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchErrorDetails()
+  }, [id])
+
+  const handleShare = async () => {
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: error?.title || "Error Details",
+        text: `Check out this error: ${error?.title}`,
+        url: window.location.href,
+      });
+    } else {
+      await navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "Link copied!",
+        description: "The URL has been copied to your clipboard.",
+      });
+    }
+  } catch (error) {
+    console.error("Error sharing:", error);
+    toast({
+      title: "Error",
+      description: "Failed to share. Please try again.",
+      variant: "destructive",
+    });
   }
+};
+
 
   const handleUpvote = () => {
     if (upvoted) {
@@ -138,6 +116,102 @@ export default function PublicErrorDetailsPage({ params }: { params: { id: strin
       hour: "2-digit",
       minute: "2-digit",
     })
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="sticky top-0 z-50 w-full backdrop-blur-lg transition-all duration-300 bg-background/80 shadow-sm">
+          <div className="container flex h-16 items-center justify-between">
+            <Link href="/" className="flex items-center gap-2 font-bold">
+              <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
+                <Bug className="size-5" />
+              </div>
+              <span>FixIt</span>
+            </Link>
+            <div className="flex gap-4 items-center">
+              <Button variant="outline" className="rounded-lg" asChild>
+                <Link href="/login">Log in</Link>
+              </Button>
+              <Button className="rounded-lg" asChild>
+                <Link href="/signup">Sign up</Link>
+              </Button>
+            </div>
+          </div>
+        </header>
+        <main className="container py-8 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-muted-foreground">Loading error details...</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="sticky top-0 z-50 w-full backdrop-blur-lg transition-all duration-300 bg-background/80 shadow-sm">
+          <div className="container flex h-16 items-center justify-between">
+            <Link href="/" className="flex items-center gap-2 font-bold">
+              <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
+                <Bug className="size-5" />
+              </div>
+              <span>FixIt</span>
+            </Link>
+            <div className="flex gap-4 items-center">
+              <Button variant="outline" className="rounded-lg" asChild>
+                <Link href="/login">Log in</Link>
+              </Button>
+              <Button className="rounded-lg" asChild>
+                <Link href="/signup">Sign up</Link>
+              </Button>
+            </div>
+          </div>
+        </header>
+        <main className="container py-8 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-500">{errorMessage}</p>
+            <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (!error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="sticky top-0 z-50 w-full backdrop-blur-lg transition-all duration-300 bg-background/80 shadow-sm">
+          <div className="container flex h-16 items-center justify-between">
+            <Link href="/" className="flex items-center gap-2 font-bold">
+              <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
+                <Bug className="size-5" />
+              </div>
+              <span>FixIt</span>
+            </Link>
+            <div className="flex gap-4 items-center">
+              <Button variant="outline" className="rounded-lg" asChild>
+                <Link href="/login">Log in</Link>
+              </Button>
+              <Button className="rounded-lg" asChild>
+                <Link href="/signup">Sign up</Link>
+              </Button>
+            </div>
+          </div>
+        </header>
+        <main className="container py-8 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-muted-foreground">Error not found</p>
+            <Button variant="outline" className="mt-4" asChild>
+              <Link href="/public-errors">Back to Public Errors</Link>
+            </Button>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   return (
@@ -183,7 +257,7 @@ export default function PublicErrorDetailsPage({ params }: { params: { id: strin
                 <ThumbsUp className="h-4 w-4" />
                 <span>{upvoteCount}</span>
               </Button>
-              <Button variant="outline" size="sm" className="rounded-lg">
+              <Button variant="outline" size="sm" className="rounded-lg" onClick={handleShare}>
                 <Share2 className="mr-2 h-4 w-4" />
                 Share
               </Button>
@@ -199,7 +273,7 @@ export default function PublicErrorDetailsPage({ params }: { params: { id: strin
                     <div className="space-y-1">
                       <CardTitle>Error Details</CardTitle>
                       <CardDescription>
-                        Reported by {error.reportedBy.name} on {formatDate(error.createdAt)}
+                        Reported by {error.created_by} on {formatDate(error.created_at)}
                       </CardDescription>
                     </div>
                     <div className="flex gap-2">
@@ -207,34 +281,34 @@ export default function PublicErrorDetailsPage({ params }: { params: { id: strin
                         variant="outline"
                         className={`
                         ${
-                          error.status === "Open"
+                          error.status === "open"
                             ? "border-amber-500 text-amber-500"
-                            : error.status === "In Progress"
+                            : error.status === "in progress"
                               ? "border-blue-500 text-blue-500"
                               : "border-green-500 text-green-500"
                         }
                       `}
                       >
-                        {error.status === "Open" && <Clock className="mr-1 h-3 w-3" />}
-                        {error.status === "In Progress" && <Clock className="mr-1 h-3 w-3" />}
-                        {error.status === "Resolved" && <CheckCircle2 className="mr-1 h-3 w-3" />}
-                        {error.status}
+                        {error.status === "open" && <Clock className="mr-1 h-3 w-3" />}
+                        {error.status === "in progress" && <Clock className="mr-1 h-3 w-3" />}
+                        {error.status === "resolved" && <CheckCircle2 className="mr-1 h-3 w-3" />}
+                        {error.status.charAt(0).toUpperCase() + error.status.slice(1)}
                       </Badge>
                       <Badge
                         variant="outline"
                         className={`
                         ${
-                          error.priority === "Critical"
+                          error.priority === "critical"
                             ? "border-red-500 text-red-500"
-                            : error.priority === "High"
+                            : error.priority === "high"
                               ? "border-amber-500 text-amber-500"
-                              : error.priority === "Medium"
+                              : error.priority === "medium"
                                 ? "border-blue-500 text-blue-500"
                                 : "border-green-500 text-green-500"
                         }
                       `}
                       >
-                        {error.priority}
+                        {error.priority.charAt(0).toUpperCase() + error.priority.slice(1)}
                       </Badge>
                     </div>
                   </div>
@@ -270,36 +344,36 @@ export default function PublicErrorDetailsPage({ params }: { params: { id: strin
                           <div>
                             <h3 className="text-sm font-medium text-muted-foreground mb-2">Programming Language</h3>
                             <Badge variant="secondary" className="rounded-full">
-                              {error.programmingLanguage}
+                              {error.language}
                             </Badge>
                           </div>
                         </div>
 
                         <div>
                           <h3 className="text-sm font-medium text-muted-foreground mb-2">Error Message</h3>
-                          <div className="bg-muted p-3 rounded-md text-sm font-mono">{error.errorMessage}</div>
+                          <div className="bg-muted p-3 rounded-md text-sm font-mono">{error.error_message}</div>
                         </div>
 
                         <div>
                           <h3 className="text-sm font-medium text-muted-foreground mb-2">Stack Trace</h3>
                           <div className="bg-muted p-3 rounded-md text-sm font-mono whitespace-pre-wrap overflow-x-auto max-h-[200px]">
-                            {error.stackTrace}
+                            {error.stack_trace}
                           </div>
                         </div>
 
                         <div>
                           <h3 className="text-sm font-medium text-muted-foreground mb-2">Steps to Reproduce</h3>
-                          <div className="text-sm whitespace-pre-wrap">{error.stepsToReproduce}</div>
+                          <div className="text-sm whitespace-pre-wrap">{error.steps_to_reproduce}</div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <h3 className="text-sm font-medium text-muted-foreground mb-2">Expected Behavior</h3>
-                            <p className="text-sm">{error.expectedBehavior}</p>
+                            <p className="text-sm">{error.expected_behaviour}</p>
                           </div>
                           <div>
                             <h3 className="text-sm font-medium text-muted-foreground mb-2">Actual Behavior</h3>
-                            <p className="text-sm">{error.actualBehavior}</p>
+                            <p className="text-sm">{error.actual_behaviour}</p>
                           </div>
                         </div>
 
@@ -325,17 +399,11 @@ export default function PublicErrorDetailsPage({ params }: { params: { id: strin
                                 <div>
                                   <h3 className="font-medium">{solution.title}</h3>
                                   <p className="text-xs text-muted-foreground">
-                                    Proposed by {solution.author.name} on {formatDate(solution.createdAt)}
+                                    Proposed by {solution.created_by} on {formatDate(solution.created_at)}
                                   </p>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <Button variant="ghost" size="sm" className="h-8 gap-1">
-                                    <ThumbsUp className="h-4 w-4" />
-                                    <span>{solution.upvotes}</span>
-                                  </Button>
-                                </div>
                               </div>
-                              <div className="text-sm whitespace-pre-wrap">{solution.description}</div>
+                              <div className="text-sm whitespace-pre-wrap">{solution.solution}</div>
                             </div>
                           ))
                         ) : (
@@ -359,22 +427,19 @@ export default function PublicErrorDetailsPage({ params }: { params: { id: strin
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="comments" className="space-y-6">
+                    {/* <TabsContent value="comments" className="space-y-6">
                       <div className="space-y-4">
                         {error.comments.length > 0 ? (
                           error.comments.map((comment) => (
                             <div key={comment.id} className="flex gap-4">
                               <Avatar className="h-9 w-9">
-                                <AvatarImage
-                                  src={comment.author.avatar || "/placeholder.svg"}
-                                  alt={comment.author.name}
-                                />
-                                <AvatarFallback>{comment.author.initials}</AvatarFallback>
+                                <AvatarImage src="/placeholder.svg" alt={comment.author?.name || "Anonymous"} />
+                                <AvatarFallback>{comment.author?.name?.charAt(0) || "A"}</AvatarFallback>
                               </Avatar>
                               <div className="flex-1 space-y-1">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-medium text-sm">{comment.author.name}</span>
-                                  <span className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</span>
+                                  <span className="font-medium text-sm">{comment.author?.name || "Anonymous"}</span>
+                                  <span className="text-xs text-muted-foreground">{formatDate(comment.created_at)}</span>
                                 </div>
                                 <p className="text-sm">{comment.text}</p>
                               </div>
@@ -399,7 +464,7 @@ export default function PublicErrorDetailsPage({ params }: { params: { id: strin
                           </div>
                         </div>
                       </div>
-                    </TabsContent>
+                    </TabsContent> */}
                   </Tabs>
                 </CardContent>
               </Card>
@@ -419,15 +484,15 @@ export default function PublicErrorDetailsPage({ params }: { params: { id: strin
                         variant="outline"
                         className={`
                         ${
-                          error.status === "Open"
+                          error.status === "open"
                             ? "border-amber-500 text-amber-500"
-                            : error.status === "In Progress"
+                            : error.status === "in progress"
                               ? "border-blue-500 text-blue-500"
                               : "border-green-500 text-green-500"
                         }
                       `}
                       >
-                        {error.status}
+                        {error.status.charAt(0).toUpperCase() + error.status.slice(1)}
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between">
@@ -436,15 +501,15 @@ export default function PublicErrorDetailsPage({ params }: { params: { id: strin
                         variant="outline"
                         className={`
                         ${
-                          error.priority === "Critical"
+                          error.priority === "critical"
                             ? "border-red-500 text-red-500"
-                            : error.priority === "High"
+                            : error.priority === "high"
                               ? "border-amber-500 text-amber-500"
                               : "border-blue-500 text-blue-500"
                         }
                       `}
                       >
-                        {error.priority}
+                        {error.priority.charAt(0).toUpperCase() + error.priority.slice(1)}
                       </Badge>
                     </div>
                   </div>
@@ -454,11 +519,11 @@ export default function PublicErrorDetailsPage({ params }: { params: { id: strin
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Created</span>
-                      <span className="text-sm text-muted-foreground">{formatDate(error.createdAt)}</span>
+                      <span className="text-sm text-muted-foreground">{formatDate(error.created_at)}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Last Updated</span>
-                      <span className="text-sm text-muted-foreground">{formatDate(error.updatedAt)}</span>
+                      <span className="text-sm text-muted-foreground">{formatDate(error.updated_at || error.created_at)}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Environment</span>
@@ -473,39 +538,14 @@ export default function PublicErrorDetailsPage({ params }: { params: { id: strin
                   <CardTitle className="text-base font-medium">Similar Errors</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {[
-                    {
-                      id: "err-123",
-                      title: "Cannot read property of undefined in React component",
-                      status: "Resolved",
-                    },
-                    {
-                      id: "err-456",
-                      title: "TypeError when accessing nested API response data",
-                      status: "Open",
-                    },
-                    {
-                      id: "err-789",
-                      title: "React useEffect dependency array causing TypeError",
-                      status: "In Progress",
-                    },
-                  ].map((similarError) => (
-                    <div key={similarError.id} className="space-y-1">
-                      <Link href={`/public-errors/${similarError.id}`} className="text-sm hover:underline">
-                        {similarError.title}
+                  {error.tags.slice(0, 3).map((tag, index) => (
+                    <div key={index} className="space-y-1">
+                      <Link href="#" className="text-sm hover:underline">
+                        Similar error related to {tag}
                       </Link>
                       <div className="flex items-center justify-between">
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${
-                            similarError.status === "Open"
-                              ? "border-amber-500 text-amber-500"
-                              : similarError.status === "In Progress"
-                                ? "border-blue-500 text-blue-500"
-                                : "border-green-500 text-green-500"
-                          }`}
-                        >
-                          {similarError.status}
+                        <Badge variant="outline" className="text-xs">
+                          Related
                         </Badge>
                       </div>
                     </div>

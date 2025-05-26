@@ -568,11 +568,11 @@ export default function PublicErrorsPage() {
                               </Button>
                               <div className="flex items-center text-xs text-muted-foreground">
                                 <Avatar className="h-6 w-6 mr-2">
-                                  <AvatarImage
+                                  {/* <AvatarImage
                                     src={result.reportedBy.avatar || "/placeholder.svg"}
                                     alt={result.reportedBy.name}
-                                  />
-                                  <AvatarFallback>{result.reportedBy.initials}</AvatarFallback>
+                                  /> */}
+                                  {/* <AvatarFallback>{result.reportedBy.initials}</AvatarFallback> */}
                                 </Avatar>
                                 <span className="sr-only sm:not-sr-only">{result.reportedAt}</span>
                               </div>
