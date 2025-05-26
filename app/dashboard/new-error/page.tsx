@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { ArrowLeft, Bug, Upload } from "lucide-react"
+import { ArrowLeft, Bug, Upload, X, Check, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,11 @@ import { useToast } from "@/components/ui/use-toast"
 import { getCookie } from "@/utils/cookies"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { Calendar } from "@/components/ui/calendar"
+import { Calendar as CalendarIcon } from "lucide-react"
+import { PopoverClose } from "@radix-ui/react-popover"
 
 interface Category {
   id: number
@@ -43,6 +48,58 @@ interface Framework {
   language: number
 }
 
+interface TeamMember {
+  id: number
+  name: string
+  email: string
+}
+
+interface CustomToastProps {
+  title: string
+  description: string
+  variant: "success" | "error" | "warning"
+  onClose?: () => void
+}
+
+const CustomToast = ({ title, description, variant, onClose }: CustomToastProps) => {
+  const iconMap = {
+    success: <Check className="h-5 w-5 text-green-500" />,
+    error: <X className="h-5 w-5 text-red-500" />,
+    warning: <AlertCircle className="h-5 w-5 text-yellow-500" />,
+  }
+
+  const bgColorMap = {
+    success: "bg-green-50 border-green-200",
+    error: "bg-red-50 border-red-200",
+    warning: "bg-yellow-50 border-yellow-200",
+  }
+
+  return (
+    <div className={cn(
+      "border rounded-lg p-4 shadow-lg w-full max-w-md relative",
+      bgColorMap[variant]
+    )}>
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5">
+          {iconMap[variant]}
+        </div>
+        <div className="flex-1">
+          <h3 className="font-medium text-sm">{title}</h3>
+          <p className="text-sm text-muted-foreground mt-1">{description}</p>
+        </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-2 right-2 rounded-full p-1 hover:bg-gray-100 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function NewErrorPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeTab, setActiveTab] = useState("details")
@@ -50,6 +107,7 @@ export default function NewErrorPage() {
   const [tags, setTags] = useState<Tag[]>([])
   const [languages, setLanguages] = useState<Language[]>([])
   const [frameworks, setFrameworks] = useState<Framework[]>([])
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showCategoryDialog, setShowCategoryDialog] = useState(false)
   const [showTagDialog, setShowTagDialog] = useState(false)
@@ -63,8 +121,9 @@ export default function NewErrorPage() {
   const [selectedLanguageForFramework, setSelectedLanguageForFramework] = useState("")
   const [tagInputValue, setTagInputValue] = useState("")
   const [tagSuggestionsOpen, setTagSuggestionsOpen] = useState(false)
+  const [deadline, setDeadline] = useState<Date | undefined>(undefined)
+  const [deadlineOpen, setDeadlineOpen] = useState(false)
   const { toast } = useToast()
-  const csrfToken = getCookie("csrftoken")
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   const [errorDetails, setErrorDetails] = useState({
@@ -72,18 +131,27 @@ export default function NewErrorPage() {
     description: "",
     category: "",
     priority: "",
-    programmingLanguage: "",
+    language: "",
     framework: "",
-    errorMessage: "",
-    stackTrace: "",
-    stepsToReproduce: "",
-    expectedBehavior: "",
-    actualBehavior: "",
+    error_message: "",
+    stack_trace: "",
+    steps_to_reproduce: "",
+    expected_behaviour: "",
+    actual_behaviour: "",
     environment: "",
-    assignTo: "",
-    isPublic: false,
-    tags: "",
+    assigned_to: "",
+    visible_to_public: false,
+    tags: [] as number[],
   })
+
+  const showCustomToast = (title: string, description: string, variant: "success" | "error" | "warning") => {
+    toast({
+      title,
+      description,
+      // Optionally, you can add a variant property if your toast system supports it
+      // variant,
+    })
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -92,7 +160,7 @@ export default function NewErrorPage() {
           throw new Error("CSRF token not found")
         }
         
-        const [categoriesRes, tagsRes, languagesRes, frameworksRes] = await Promise.all([
+        const [categoriesRes, tagsRes, languagesRes, frameworksRes, teamRes] = await Promise.all([
           fetch('http://127.0.0.1:8000/bugtracker/categories/', {
             method: 'GET',
             credentials: "include",
@@ -120,10 +188,18 @@ export default function NewErrorPage() {
             headers: {
               "X-CSRFToken": csrfToken,
             }
+          }),
+          fetch('http://127.0.0.1:8000/bugtracker/teams/', {
+            method: "GET",
+          credentials: 'include',
+          headers: {
+            "X-CSRFToken": csrfToken,
+            "Content-Type": "application/json",
+          },
           })
         ])
 
-        if (!categoriesRes.ok || !tagsRes.ok || !languagesRes.ok || !frameworksRes.ok) {
+        if (!categoriesRes.ok || !tagsRes.ok || !languagesRes.ok || !frameworksRes.ok || !teamRes.ok) {
           throw new Error('Failed to fetch data')
         }
 
@@ -131,25 +207,29 @@ export default function NewErrorPage() {
         const tagsData = await tagsRes.json()
         const languagesData = await languagesRes.json()
         const frameworksData = await frameworksRes.json()
+        const teamData = await teamRes.json()
 
         setCategories(categoriesData)
         setTags(tagsData)
         setLanguages(languagesData)
         setFrameworks(frameworksData)
+        setTeamMembers(teamData)
         setIsLoading(false)
       } catch (error) {
         console.error('Error fetching data:', error)
-        toast({
-          title: "Error",
-          description: "Failed to load required data",
-          variant: "destructive",
-        })
+        showCustomToast(
+          "Error",
+          "Failed to load required data. Please try again later.",
+          "error"
+        )
         setIsLoading(false)
       }
     }
 
     fetchData()
-  }, [toast, csrfToken])
+  }, [])
+
+  const csrfToken = getCookie("csrftoken")
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -162,7 +242,7 @@ export default function NewErrorPage() {
       return
     }
     
-    if (name === "programmingLanguage" && value === "other") {
+    if (name === "language" && value === "other") {
       setShowLanguageDialog(true)
       return
     }
@@ -179,16 +259,67 @@ export default function NewErrorPage() {
     setErrorDetails((prev) => ({ ...prev, [name]: checked }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false)
+    try {
+      if (!csrfToken) {
+        throw new Error("CSRF token not found")
+      }
+
+      const payload = {
+        title: errorDetails.title,
+        description: errorDetails.description,
+        category: parseInt(errorDetails.category),
+        priority: errorDetails.priority,
+        language: errorDetails.language ? parseInt(errorDetails.language) : null,
+        framework: errorDetails.framework ? parseInt(errorDetails.framework) : null,
+        environment: errorDetails.environment,
+        error_message: errorDetails.error_message,
+        stack_trace: errorDetails.stack_trace,
+        steps_to_reproduce: errorDetails.steps_to_reproduce,
+        expected_behaviour: errorDetails.expected_behaviour,
+        actual_behaviour: errorDetails.actual_behaviour,
+        visible_to_public: errorDetails.visible_to_public,
+        tags: errorDetails.tags,
+        assigned_to: errorDetails.assigned_to ? parseInt(errorDetails.assigned_to) : null,
+        deadline: deadline ? deadline.toISOString() : null
+      }
+
+      const response = await fetch('http://127.0.0.1:8000/bugtracker/errors/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to submit error report')
+      }
+
+      const data = await response.json()
+      showCustomToast(
+        "Success",
+        "Error report submitted successfully!",
+        "success"
+      )
       // Redirect to dashboard or error details page
-      window.location.href = "/dashboard"
-    }, 1500)
+      window.location.href = `/errors/${data.id}`
+    } catch (error) {
+      console.error('Error submitting form:', error)
+      showCustomToast(
+        "Error",
+        error instanceof Error ? error.message : "Failed to submit error report",
+        "error"
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleCreateCategory = async () => {
@@ -219,17 +350,18 @@ export default function NewErrorPage() {
       setShowCategoryDialog(false)
       setNewCategoryName("")
       setNewCategoryDescription("")
-      toast({
-        title: "Success",
-        description: "New category created successfully",
-      })
+      showCustomToast(
+        "Success",
+        "New category created successfully",
+        "success"
+      )
     } catch (error) {
       console.error('Error creating category:', error)
-      toast({
-        title: "Error",
-        description: "Failed to create new category",
-        variant: "destructive",
-      })
+      showCustomToast(
+        "Error",
+        "Failed to create new category",
+        "error"
+      )
     }
   }
 
@@ -258,21 +390,22 @@ export default function NewErrorPage() {
       setTags([...tags, newTag])
       setErrorDetails(prev => ({
         ...prev,
-        tags: prev.tags ? `${prev.tags},${newTag.name}` : newTag.name
+        tags: [...prev.tags, newTag.id]
       }))
       setShowTagDialog(false)
       setNewTagName("")
-      toast({
-        title: "Success",
-        description: "New tag created successfully",
-      })
+      showCustomToast(
+        "Success",
+        "New tag created successfully",
+        "success"
+      )
     } catch (error) {
       console.error('Error creating tag:', error)
-      toast({
-        title: "Error",
-        description: "Failed to create new tag",
-        variant: "destructive",
-      })
+      showCustomToast(
+        "Error",
+        "Failed to create new tag",
+        "error"
+      )
     }
   }
 
@@ -299,20 +432,21 @@ export default function NewErrorPage() {
 
       const newLanguage = await response.json()
       setLanguages([...languages, newLanguage])
-      setErrorDetails(prev => ({ ...prev, programmingLanguage: newLanguage.id.toString() }))
+      setErrorDetails(prev => ({ ...prev, language: newLanguage.id.toString() }))
       setShowLanguageDialog(false)
       setNewLanguageName("")
-      toast({
-        title: "Success",
-        description: "New language created successfully",
-      })
+      showCustomToast(
+        "Success",
+        "New language created successfully",
+        "success"
+      )
     } catch (error) {
       console.error('Error creating language:', error)
-      toast({
-        title: "Error",
-        description: "Failed to create new language",
-        variant: "destructive",
-      })
+      showCustomToast(
+        "Error",
+        "Failed to create new language",
+        "error"
+      )
     }
   }
 
@@ -344,17 +478,18 @@ export default function NewErrorPage() {
       setShowFrameworkDialog(false)
       setNewFrameworkName("")
       setSelectedLanguageForFramework("")
-      toast({
-        title: "Success",
-        description: "New framework created successfully",
-      })
+      showCustomToast(
+        "Success",
+        "New framework created successfully",
+        "success"
+      )
     } catch (error) {
       console.error('Error creating framework:', error)
-      toast({
-        title: "Error",
-        description: "Failed to create new framework",
-        variant: "destructive",
-      })
+      showCustomToast(
+        "Error",
+        "Failed to create new framework",
+        "error"
+      )
     }
   }
 
@@ -370,12 +505,12 @@ export default function NewErrorPage() {
     }
   }
 
-  const handleTagSelect = (tagName: string) => {
-    const currentTags = errorDetails.tags ? errorDetails.tags.split(',') : []
-    
-    if (!currentTags.includes(tagName)) {
-      const newTags = [...currentTags, tagName].join(',')
-      setErrorDetails(prev => ({ ...prev, tags: newTags }))
+  const handleTagSelect = (tagId: number) => {
+    if (!errorDetails.tags.includes(tagId)) {
+      setErrorDetails(prev => ({
+        ...prev,
+        tags: [...prev.tags, tagId]
+      }))
     }
     
     setTagInputValue("")
@@ -393,14 +528,23 @@ export default function NewErrorPage() {
     }
   }
 
+  const handleTagRemove = (tagId: number) => {
+    setErrorDetails(prev => ({
+      ...prev,
+      tags: prev.tags.filter(id => id !== tagId)
+    }))
+  }
+
   const filteredTagSuggestions = tags.filter(tag => 
     tag.name.toLowerCase().includes(tagInputValue.toLowerCase()) &&
-    !errorDetails.tags.split(',').map(t => t.trim()).includes(tag.name)
+    !errorDetails.tags.includes(tag.id)
   )
 
   const filteredFrameworks = frameworks.filter(
-    framework => framework.language.toString() === errorDetails.programmingLanguage
+    framework => framework.language.toString() === errorDetails.language
   )
+
+  const selectedTags = tags.filter(tag => errorDetails.tags.includes(tag.id))
 
   return (
     <div className="space-y-6">
@@ -528,19 +672,19 @@ export default function NewErrorPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="programmingLanguage">Programming Language</Label>
+                      <Label htmlFor="language">Programming Language</Label>
                       {isLoading ? (
                         <Select disabled>
-                          <SelectTrigger id="programmingLanguage">
+                          <SelectTrigger id="language">
                             <SelectValue placeholder="Loading languages..." />
                           </SelectTrigger>
                         </Select>
                       ) : (
                         <Select
-                          value={errorDetails.programmingLanguage}
-                          onValueChange={(value) => handleSelectChange("programmingLanguage", value)}
+                          value={errorDetails.language}
+                          onValueChange={(value) => handleSelectChange("language", value)}
                         >
-                          <SelectTrigger id="programmingLanguage">
+                          <SelectTrigger id="language">
                             <SelectValue placeholder="Select language" />
                           </SelectTrigger>
                           <SelectContent>
@@ -567,10 +711,10 @@ export default function NewErrorPage() {
                         <Select
                           value={errorDetails.framework}
                           onValueChange={(value) => handleSelectChange("framework", value)}
-                          disabled={!errorDetails.programmingLanguage}
+                          disabled={!errorDetails.language}
                         >
                           <SelectTrigger id="framework">
-                            <SelectValue placeholder={errorDetails.programmingLanguage ? "Select framework" : "Select language first"} />
+                            <SelectValue placeholder={errorDetails.language ? "Select framework" : "Select language first"} />
                           </SelectTrigger>
                           <SelectContent>
                             {filteredFrameworks.map((framework) => (
@@ -614,61 +758,61 @@ export default function NewErrorPage() {
               <TabsContent value="technical" className="space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="errorMessage">Error Message</Label>
+                    <Label htmlFor="error_message">Error Message</Label>
                     <Input
-                      id="errorMessage"
-                      name="errorMessage"
+                      id="error_message"
+                      name="error_message"
                       placeholder="The exact error message you received"
-                      value={errorDetails.errorMessage}
+                      value={errorDetails.error_message}
                       onChange={handleChange}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="stackTrace">Stack Trace</Label>
+                    <Label htmlFor="stack_trace">Stack Trace</Label>
                     <Textarea
-                      id="stackTrace"
-                      name="stackTrace"
+                      id="stack_trace"
+                      name="stack_trace"
                       placeholder="Paste the full stack trace here"
                       className="min-h-[120px] font-mono text-sm"
-                      value={errorDetails.stackTrace}
+                      value={errorDetails.stack_trace}
                       onChange={handleChange}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="stepsToReproduce">Steps to Reproduce</Label>
+                    <Label htmlFor="steps_to_reproduce">Steps to Reproduce</Label>
                     <Textarea
-                      id="stepsToReproduce"
-                      name="stepsToReproduce"
+                      id="steps_to_reproduce"
+                      name="steps_to_reproduce"
                       placeholder="Step-by-step instructions to reproduce the error"
                       className="min-h-[120px]"
-                      value={errorDetails.stepsToReproduce}
+                      value={errorDetails.steps_to_reproduce}
                       onChange={handleChange}
                     />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="expectedBehavior">Expected Behavior</Label>
+                      <Label htmlFor="expected_behaviour">Expected Behavior</Label>
                       <Textarea
-                        id="expectedBehavior"
-                        name="expectedBehavior"
+                        id="expected_behaviour"
+                        name="expected_behaviour"
                         placeholder="What should have happened"
                         className="min-h-[100px]"
-                        value={errorDetails.expectedBehavior}
+                        value={errorDetails.expected_behaviour}
                         onChange={handleChange}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="actualBehavior">Actual Behavior</Label>
+                      <Label htmlFor="actual_behaviour">Actual Behavior</Label>
                       <Textarea
-                        id="actualBehavior"
-                        name="actualBehavior"
+                        id="actual_behaviour"
+                        name="actual_behaviour"
                         placeholder="What actually happened"
                         className="min-h-[100px]"
-                        value={errorDetails.actualBehavior}
+                        value={errorDetails.actual_behaviour}
                         onChange={handleChange}
                       />
                     </div>
@@ -693,32 +837,72 @@ export default function NewErrorPage() {
               <TabsContent value="additional" className="space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="assignTo">Assign To</Label>
+                    <Label htmlFor="assigned_to">Assign To</Label>
                     <Select
-                      value={errorDetails.assignTo}
-                      onValueChange={(value) => handleSelectChange("assignTo", value)}
+                      value={errorDetails.assigned_to}
+                      onValueChange={(value) => handleSelectChange("assigned_to", value)}
                     >
-                      <SelectTrigger id="assignTo">
+                      <SelectTrigger id="assigned_to">
                         <SelectValue placeholder="Select team member" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="unassigned">Unassigned</SelectItem>
-                        <SelectItem value="john">John Assefa</SelectItem>
-                        <SelectItem value="netsanet">Netsanet Alemu</SelectItem>
-                        <SelectItem value="abiy">Abiy Shiferaw</SelectItem>
-                        <SelectItem value="team">Entire Team</SelectItem>
+                        {teamMembers.map((member) => (
+                          <SelectItem key={member.id} value={member.id.toString()}>
+                            {member.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="tags">Tags</Label>
+                    <Label>Deadline (optional)</Label>
+                    <Popover open={deadlineOpen} onOpenChange={setDeadlineOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !deadline && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {deadline ? format(deadline, "PPP") : <span>Pick a deadline</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={deadline}
+                          onSelect={(date) => {
+                            setDeadline(date)
+                            setDeadlineOpen(false)
+                          }}
+                          initialFocus
+                        />
+                        <div className="p-2 border-t flex justify-end">
+                          <PopoverClose asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setDeadline(undefined)}
+                            >
+                              Clear
+                            </Button>
+                          </PopoverClose>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Tags</Label>
                     <div className="flex flex-col gap-2">
                       <div className="flex gap-2">
                         <Popover open={tagSuggestionsOpen} onOpenChange={setTagSuggestionsOpen}>
                           <PopoverTrigger asChild>
                             <Input
-                              id="tags"
                               ref={tagInputRef}
                               placeholder="Type to search or add tags"
                               value={tagInputValue}
@@ -743,7 +927,7 @@ export default function NewErrorPage() {
                                   <CommandItem
                                     key={tag.id}
                                     value={tag.name}
-                                    onSelect={() => handleTagSelect(tag.name)}
+                                    onSelect={() => handleTagSelect(tag.id)}
                                   >
                                     {tag.name}
                                   </CommandItem>
@@ -761,17 +945,12 @@ export default function NewErrorPage() {
                         </Button>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {errorDetails.tags.split(',').filter(tag => tag.trim()).map((tag, index) => (
-                          <span key={index} className="px-2 py-1 bg-secondary text-secondary-foreground rounded-full text-sm flex items-center gap-1">
-                            {tag.trim()}
+                        {selectedTags.map((tag) => (
+                          <span key={tag.id} className="px-2 py-1 bg-secondary text-secondary-foreground rounded-full text-sm flex items-center gap-1">
+                            {tag.name}
                             <button
                               type="button"
-                              onClick={() => {
-                                const newTags = errorDetails.tags.split(',')
-                                  .filter(t => t.trim() !== tag.trim())
-                                  .join(',')
-                                setErrorDetails(prev => ({ ...prev, tags: newTags }))
-                              }}
+                              onClick={() => handleTagRemove(tag.id)}
                               className="text-muted-foreground hover:text-foreground"
                             >
                               ×
@@ -784,11 +963,11 @@ export default function NewErrorPage() {
 
                   <div className="flex items-center space-x-2 pt-2">
                     <Checkbox
-                      id="isPublic"
-                      checked={errorDetails.isPublic}
-                      onCheckedChange={(checked) => handleCheckboxChange("isPublic", checked as boolean)}
+                      id="visible_to_public"
+                      checked={errorDetails.visible_to_public}
+                      onCheckedChange={(checked) => handleCheckboxChange("visible_to_public", checked as boolean)}
                     />
-                    <Label htmlFor="isPublic" className="text-sm font-normal">
+                    <Label htmlFor="visible_to_public" className="text-sm font-normal">
                       Make this error public (visible to all users)
                     </Label>
                   </div>
