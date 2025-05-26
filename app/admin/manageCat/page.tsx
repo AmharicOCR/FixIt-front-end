@@ -64,61 +64,56 @@ export default function AdminCategoriesTagsPage() {
   const { toast } = useToast()
   const csrftoken = getCookie('csrftoken')
 
-  useEffect(() => {
-    fetchData()
-  }, [])
+  // Data fetching functions
+  const fetchCategories = async () => {
+    const response = await fetch('http://127.0.0.1:8000/bugtracker/categories/', {
+      method: 'GET',
+      credentials: "include",
+      headers: { "X-CSRFToken": csrftoken ?? "" }
+    })
+    const data = await response.json()
+    setCategories(data)
+  }
 
-  const fetchData = async () => {
+  const fetchTags = async () => {
+    const response = await fetch('http://127.0.0.1:8000/bugtracker/tags/', {
+      method: 'GET',
+      credentials: "include",
+      headers: { "X-CSRFToken": csrftoken?? ""  }
+    })
+    const data = await response.json()
+    setTags(data)
+  }
+
+  const fetchLanguages = async () => {
+    const response = await fetch('http://127.0.0.1:8000/bugtracker/languages/', {
+      method: 'GET',
+      credentials: "include",
+      headers: { "X-CSRFToken": csrftoken ?? "" }
+    })
+    const data = await response.json()
+    setLanguages(data)
+  }
+
+  const fetchFrameworks = async () => {
+    const response = await fetch('http://127.0.0.1:8000/bugtracker/frameworks/', {
+      method: 'GET',
+      credentials: "include",
+      headers: { "X-CSRFToken": csrftoken ?? ""  }
+    })
+    const data = await response.json()
+    setFrameworks(data)
+  }
+
+  const fetchAllData = async () => {
+    setIsLoading(true)
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
-      
-      const [categoriesRes, tagsRes, languagesRes, frameworksRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/bugtracker/categories/', {
-          method: 'GET',
-          credentials: "include",
-          headers: {
-            "X-CSRFToken": csrftoken,
-          }
-        }),
-        fetch('http://127.0.0.1:8000/bugtracker/tags/', {
-          method: 'GET',
-          credentials: "include",
-          headers: {
-            "X-CSRFToken": csrftoken,
-          }
-        }),
-        fetch('http://127.0.0.1:8000/bugtracker/languages/', {
-          method: 'GET',
-          credentials: "include",
-          headers: {
-            "X-CSRFToken": csrftoken,
-          }
-        }),
-        fetch('http://127.0.0.1:8000/bugtracker/frameworks/', {
-          method: 'GET',
-          credentials: "include",
-          headers: {
-            "X-CSRFToken": csrftoken,
-          }
-        })
+      await Promise.all([
+        fetchCategories(),
+        fetchTags(),
+        fetchLanguages(),
+        fetchFrameworks()
       ])
-
-      if (!categoriesRes.ok || !tagsRes.ok || !languagesRes.ok || !frameworksRes.ok) {
-        throw new Error('Failed to fetch data')
-      }
-
-      const categoriesData = await categoriesRes.json()
-      const tagsData = await tagsRes.json()
-      const languagesData = await languagesRes.json()
-      const frameworksData = await frameworksRes.json()
-
-      setCategories(categoriesData)
-      setTags(tagsData)
-      setLanguages(languagesData)
-      setFrameworks(frameworksData)
-      setIsLoading(false)
     } catch (error) {
       console.error('Error fetching data:', error)
       toast({
@@ -126,40 +121,34 @@ export default function AdminCategoriesTagsPage() {
         description: "Failed to load data",
         variant: "destructive",
       })
+    } finally {
       setIsLoading(false)
     }
   }
 
+  useEffect(() => {
+    fetchAllData()
+  }, [])
+
   // Category handlers
   const handleCreateCategory = async () => {
     try {
-      const csrftoken = getCookie('csrftoken')
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
-
       const response = await fetch('http://127.0.0.1:8000/bugtracker/categories/', {
         method: 'POST',
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": csrftoken,
+          "X-CSRFToken": csrftoken?? "" ,
         },
         body: JSON.stringify(newCategory)
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to create category')
-      }
+      if (!response.ok) throw new Error('Failed to create category')
 
-      const createdCategory = await response.json()
-      setCategories([...categories, createdCategory])
+      await fetchCategories()
       setShowCategoryDialog(false)
       setNewCategory({ name: "", description: "" })
-      toast({
-        title: "Success",
-        description: "Category created successfully",
-      })
+      toast({ title: "Success", description: "Category created successfully" })
     } catch (error) {
       console.error('Error creating category:', error)
       toast({
@@ -174,30 +163,21 @@ export default function AdminCategoriesTagsPage() {
     if (!editingCategory) return
 
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
       const response = await fetch(`http://127.0.0.1:8000/bugtracker/categories/${editingCategory.id}/`, {
         method: 'PUT',
         credentials: "include",
         headers: {
           'Content-Type': 'application/json',
-          "X-CSRFToken": csrftoken,
+          "X-CSRFToken": csrftoken?? "" ,
         },
         body: JSON.stringify(editingCategory)
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to update category')
-      }
+      if (!response.ok) throw new Error('Failed to update category')
 
-      const updatedCategory = await response.json()
-      setCategories(categories.map(c => c.id === updatedCategory.id ? updatedCategory : c))
+      await fetchCategories()
       setEditingCategory(null)
-      toast({
-        title: "Success",
-        description: "Category updated successfully",
-      })
+      toast({ title: "Success", description: "Category updated successfully" })
     } catch (error) {
       console.error('Error updating category:', error)
       toast({
@@ -210,26 +190,16 @@ export default function AdminCategoriesTagsPage() {
 
   const handleDeleteCategory = async (id: number) => {
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
       const response = await fetch(`http://127.0.0.1:8000/bugtracker/categories/${id}/`, {
         method: 'DELETE',
         credentials: "include",
-        headers: {
-          "X-CSRFToken": csrftoken,
-        },
+        headers: { "X-CSRFToken": csrftoken ?? "" },
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to delete category')
-      }
+      if (!response.ok) throw new Error('Failed to delete category')
 
-      setCategories(categories.filter(c => c.id !== id))
-      toast({
-        title: "Success",
-        description: "Category deleted successfully",
-      })
+      await fetchCategories()
+      toast({ title: "Success", description: "Category deleted successfully" })
     } catch (error) {
       console.error('Error deleting category:', error)
       toast({
@@ -242,29 +212,20 @@ export default function AdminCategoriesTagsPage() {
 
   const handleUpdateCategoryStatus = async (id: number, status: string) => {
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
       const response = await fetch(`http://127.0.0.1:8000/bugtracker/categories/status/${id}/`, {
         method: 'PATCH',
         credentials: "include",
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': csrftoken,
+          'X-CSRFToken': csrftoken ?? "" ,
         },
         body: JSON.stringify({ status })
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to update category status')
-      }
+      if (!response.ok) throw new Error('Failed to update category status')
 
-      const updatedCategory = await response.json()
-      setCategories(categories.map(c => c.id === id ? updatedCategory : c))
-      toast({
-        title: "Success",
-        description: `Category status updated to ${status}`,
-      })
+      await fetchCategories()
+      toast({ title: "Success", description: `Category status updated to ${status}` })
     } catch (error) {
       console.error('Error updating category status:', error)
       toast({
@@ -278,31 +239,22 @@ export default function AdminCategoriesTagsPage() {
   // Tag handlers
   const handleCreateTag = async () => {
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
       const response = await fetch('http://127.0.0.1:8000/bugtracker/tags/', {
         method: 'POST',
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": csrftoken,
+          "X-CSRFToken": csrftoken ?? "" ,
         },
         body: JSON.stringify(newTag)
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to create tag')
-      }
+      if (!response.ok) throw new Error('Failed to create tag')
 
-      const createdTag = await response.json()
-      setTags([...tags, createdTag])
+      await fetchTags()
       setShowTagDialog(false)
       setNewTag({ name: "" })
-      toast({
-        title: "Success",
-        description: "Tag created successfully",
-      })
+      toast({ title: "Success", description: "Tag created successfully" })
     } catch (error) {
       console.error('Error creating tag:', error)
       toast({
@@ -317,30 +269,21 @@ export default function AdminCategoriesTagsPage() {
     if (!editingTag) return
 
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
       const response = await fetch(`http://127.0.0.1:8000/bugtracker/tags/${editingTag.id}/`, {
         method: 'PUT',
         credentials: "include",
         headers: {
           'Content-Type': 'application/json',
-          "X-CSRFToken": csrftoken,
+          "X-CSRFToken": csrftoken ?? "" ,
         },
         body: JSON.stringify(editingTag)
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to update tag')
-      }
+      if (!response.ok) throw new Error('Failed to update tag')
 
-      const updatedTag = await response.json()
-      setTags(tags.map(t => t.id === updatedTag.id ? updatedTag : t))
+      await fetchTags()
       setEditingTag(null)
-      toast({
-        title: "Success",
-        description: "Tag updated successfully",
-      })
+      toast({ title: "Success", description: "Tag updated successfully" })
     } catch (error) {
       console.error('Error updating tag:', error)
       toast({
@@ -353,26 +296,16 @@ export default function AdminCategoriesTagsPage() {
 
   const handleDeleteTag = async (id: number) => {
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
       const response = await fetch(`http://127.0.0.1:8000/bugtracker/tags/${id}/`, {
         method: 'DELETE',
         credentials: "include",
-        headers: {
-          "X-CSRFToken": csrftoken,
-        },
+        headers: { "X-CSRFToken": csrftoken ?? ""  },
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to delete tag')
-      }
+      if (!response.ok) throw new Error('Failed to delete tag')
 
-      setTags(tags.filter(t => t.id !== id))
-      toast({
-        title: "Success",
-        description: "Tag deleted successfully",
-      })
+      await fetchTags()
+      toast({ title: "Success", description: "Tag deleted successfully" })
     } catch (error) {
       console.error('Error deleting tag:', error)
       toast({
@@ -385,29 +318,20 @@ export default function AdminCategoriesTagsPage() {
 
   const handleUpdateTagStatus = async (id: number, status: string) => {
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
       const response = await fetch(`http://127.0.0.1:8000/bugtracker/tags/status/${id}/`, {
         method: 'PATCH',
         credentials: "include",
         headers: {
           'Content-Type': 'application/json',
-          "X-CSRFToken": csrftoken,
+          "X-CSRFToken": csrftoken ?? "" ,
         },
         body: JSON.stringify({ status })
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to update tag status')
-      }
+      if (!response.ok) throw new Error('Failed to update tag status')
 
-      const updatedTag = await response.json()
-      setTags(tags.map(t => t.id === id ? updatedTag : t))
-      toast({
-        title: "Success",
-        description: `Tag status updated to ${status}`,
-      })
+      await fetchTags()
+      toast({ title: "Success", description: `Tag status updated to ${status}` })
     } catch (error) {
       console.error('Error updating tag status:', error)
       toast({
@@ -421,31 +345,22 @@ export default function AdminCategoriesTagsPage() {
   // Language handlers
   const handleCreateLanguage = async () => {
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
       const response = await fetch('http://127.0.0.1:8000/bugtracker/languages/', {
         method: 'POST',
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": csrftoken,
+          "X-CSRFToken": csrftoken ?? "" ,
         },
         body: JSON.stringify(newLanguage)
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to create language')
-      }
+      if (!response.ok) throw new Error('Failed to create language')
 
-      const createdLanguage = await response.json()
-      setLanguages([...languages, createdLanguage])
+      await fetchLanguages()
       setShowLanguageDialog(false)
       setNewLanguage({ name: "" })
-      toast({
-        title: "Success",
-        description: "Language created successfully",
-      })
+      toast({ title: "Success", description: "Language created successfully" })
     } catch (error) {
       console.error('Error creating language:', error)
       toast({
@@ -460,30 +375,21 @@ export default function AdminCategoriesTagsPage() {
     if (!editingLanguage) return
 
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
       const response = await fetch(`http://127.0.0.1:8000/bugtracker/languages/${editingLanguage.id}/`, {
         method: 'PUT',
         credentials: "include",
         headers: {
           'Content-Type': 'application/json',
-          "X-CSRFToken": csrftoken,
+          "X-CSRFToken": csrftoken ?? "" ,
         },
         body: JSON.stringify(editingLanguage)
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to update language')
-      }
+      if (!response.ok) throw new Error('Failed to update language')
 
-      const updatedLanguage = await response.json()
-      setLanguages(languages.map(l => l.id === updatedLanguage.id ? updatedLanguage : l))
+      await fetchLanguages()
       setEditingLanguage(null)
-      toast({
-        title: "Success",
-        description: "Language updated successfully",
-      })
+      toast({ title: "Success", description: "Language updated successfully" })
     } catch (error) {
       console.error('Error updating language:', error)
       toast({
@@ -496,27 +402,16 @@ export default function AdminCategoriesTagsPage() {
 
   const handleDeleteLanguage = async (id: number) => {
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
       const response = await fetch(`http://127.0.0.1:8000/bugtracker/languages/${id}/`, {
         method: 'DELETE',
         credentials: "include",
-        headers: {
-          "X-CSRFToken": csrftoken,
-        },
+        headers: { "X-CSRFToken": csrftoken ?? "" },
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to delete language')
-      }
+      if (!response.ok) throw new Error('Failed to delete language')
 
-      setLanguages(languages.filter(l => l.id !== id))
-      setFrameworks(frameworks.filter(f => f.language !== id))
-      toast({
-        title: "Success",
-        description: "Language deleted successfully",
-      })
+      await Promise.all([fetchLanguages(), fetchFrameworks()])
+      toast({ title: "Success", description: "Language deleted successfully" })
     } catch (error) {
       console.error('Error deleting language:', error)
       toast({
@@ -529,29 +424,20 @@ export default function AdminCategoriesTagsPage() {
 
   const handleUpdateLanguageStatus = async (id: number, status: string) => {
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
       const response = await fetch(`http://127.0.0.1:8000/bugtracker/languages/status/${id}/`, {
         method: 'PATCH',
         credentials: "include",
         headers: {
           'Content-Type': 'application/json',
-          "X-CSRFToken": csrftoken,
+          "X-CSRFToken": csrftoken ?? "" ,
         },
         body: JSON.stringify({ status })
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to update language status')
-      }
+      if (!response.ok) throw new Error('Failed to update language status')
 
-      const updatedLanguage = await response.json()
-      setLanguages(languages.map(l => l.id === id ? updatedLanguage : l))
-      toast({
-        title: "Success",
-        description: `Language status updated to ${status}`,
-      })
+      await fetchLanguages()
+      toast({ title: "Success", description: `Language status updated to ${status}` })
     } catch (error) {
       console.error('Error updating language status:', error)
       toast({
@@ -565,19 +451,14 @@ export default function AdminCategoriesTagsPage() {
   // Framework handlers
   const handleCreateFramework = async () => {
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
-      if (!newFramework.language) {
-        throw new Error("Please select a language")
-      }
+      if (!newFramework.language) throw new Error("Please select a language")
       
       const response = await fetch('http://127.0.0.1:8000/bugtracker/frameworks/', {
         method: 'POST',
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": csrftoken,
+          "X-CSRFToken": csrftoken ?? "" ,
         },
         body: JSON.stringify({
           ...newFramework,
@@ -585,18 +466,12 @@ export default function AdminCategoriesTagsPage() {
         })
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to create framework')
-      }
+      if (!response.ok) throw new Error('Failed to create framework')
 
-      const createdFramework = await response.json()
-      setFrameworks([...frameworks, createdFramework])
+      await fetchFrameworks()
       setShowFrameworkDialog(false)
       setNewFramework({ name: "", language: "" })
-      toast({
-        title: "Success",
-        description: "Framework created successfully",
-      })
+      toast({ title: "Success", description: "Framework created successfully" })
     } catch (error) {
       console.error('Error creating framework:', error)
       toast({
@@ -611,15 +486,12 @@ export default function AdminCategoriesTagsPage() {
     if (!editingFramework) return
 
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
       const response = await fetch(`http://127.0.0.1:8000/bugtracker/frameworks/${editingFramework.id}/`, {
         method: 'PUT',
         credentials: "include",
         headers: {
           'Content-Type': 'application/json',
-          "X-CSRFToken": csrftoken,
+          "X-CSRFToken": csrftoken ?? "" ,
         },
         body: JSON.stringify({
           ...editingFramework,
@@ -627,17 +499,11 @@ export default function AdminCategoriesTagsPage() {
         })
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to update framework')
-      }
+      if (!response.ok) throw new Error('Failed to update framework')
 
-      const updatedFramework = await response.json()
-      setFrameworks(frameworks.map(f => f.id === updatedFramework.id ? updatedFramework : f))
+      await fetchFrameworks()
       setEditingFramework(null)
-      toast({
-        title: "Success",
-        description: "Framework updated successfully",
-      })
+      toast({ title: "Success", description: "Framework updated successfully" })
     } catch (error) {
       console.error('Error updating framework:', error)
       toast({
@@ -650,26 +516,16 @@ export default function AdminCategoriesTagsPage() {
 
   const handleDeleteFramework = async (id: number) => {
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
       const response = await fetch(`http://127.0.0.1:8000/bugtracker/frameworks/${id}/`, {
         method: 'DELETE',
         credentials: "include",
-        headers: {
-          "X-CSRFToken": csrftoken,
-        },
+        headers: { "X-CSRFToken": csrftoken ?? "" },
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to delete framework')
-      }
+      if (!response.ok) throw new Error('Failed to delete framework')
 
-      setFrameworks(frameworks.filter(f => f.id !== id))
-      toast({
-        title: "Success",
-        description: "Framework deleted successfully",
-      })
+      await fetchFrameworks()
+      toast({ title: "Success", description: "Framework deleted successfully" })
     } catch (error) {
       console.error('Error deleting framework:', error)
       toast({
@@ -682,29 +538,20 @@ export default function AdminCategoriesTagsPage() {
 
   const handleUpdateFrameworkStatus = async (id: number, status: string) => {
     try {
-      if (!csrftoken) {
-        throw new Error("CSRF token not found")
-      }
       const response = await fetch(`http://127.0.0.1:8000/bugtracker/frameworks/status/${id}/`, {
         method: 'PATCH',
         credentials: "include",
         headers: {
           'Content-Type': 'application/json',
-          "X-CSRFToken": csrftoken,
+          "X-CSRFToken": csrftoken ?? "" ,
         },
         body: JSON.stringify({ status })
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to update framework status')
-      }
+      if (!response.ok) throw new Error('Failed to update framework status')
 
-      const updatedFramework = await response.json()
-      setFrameworks(frameworks.map(f => f.id === id ? updatedFramework : f))
-      toast({
-        title: "Success",
-        description: `Framework status updated to ${status}`,
-      })
+      await fetchFrameworks()
+      toast({ title: "Success", description: `Framework status updated to ${status}` })
     } catch (error) {
       console.error('Error updating framework status:', error)
       toast({
@@ -787,7 +634,7 @@ export default function AdminCategoriesTagsPage() {
                   </TableHeader>
                   <TableBody>
                     {categories.map((category) => (
-                      <TableRow key={category.id}>
+                      <TableRow key={`category-${category.id}`}>
                         <TableCell className="font-medium">{category.name}</TableCell>
                         <TableCell>{category.description}</TableCell>
                         <TableCell>
@@ -850,7 +697,7 @@ export default function AdminCategoriesTagsPage() {
                   </TableHeader>
                   <TableBody>
                     {tags.map((tag) => (
-                      <TableRow key={tag.id}>
+                      <TableRow key={`tag-${tag.id}`}>
                         <TableCell className="font-medium">{tag.name}</TableCell>
                         <TableCell>
                           <Select
@@ -912,7 +759,7 @@ export default function AdminCategoriesTagsPage() {
                   </TableHeader>
                   <TableBody>
                     {languages.map((language) => (
-                      <TableRow key={language.id}>
+                      <TableRow key={`language-${language.id}`}>
                         <TableCell className="font-medium">{language.name}</TableCell>
                         <TableCell>
                           <Select
@@ -975,7 +822,7 @@ export default function AdminCategoriesTagsPage() {
                   </TableHeader>
                   <TableBody>
                     {frameworks.map((framework) => (
-                      <TableRow key={framework.id}>
+                      <TableRow key={`framework-${framework.id}`}>
                         <TableCell className="font-medium">{framework.name}</TableCell>
                         <TableCell>{framework.language_name}</TableCell>
                         <TableCell>
