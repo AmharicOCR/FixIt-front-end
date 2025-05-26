@@ -57,6 +57,11 @@ export function Sidebar({ className }: SidebarProps) {
       icon: <BarChart className="h-5 w-5" />,
     },
     {
+      title: "Input Options",
+      href: "/admin/manage-input-options",
+      icon: <BarChart className="h-5 w-5" />,
+    },
+    {
       title: "Settings",
       href: "/admin/settings",
       icon: <Settings className="h-5 w-5" />,
