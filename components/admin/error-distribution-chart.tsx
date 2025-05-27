@@ -1,59 +1,47 @@
 "use client"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
 
-const data = [
-  {
-    name: "JavaScript",
-    errors: 1200,
-    solutions: 980,
-  },
-  {
-    name: "Python",
-    errors: 900,
-    solutions: 850,
-  },
-  {
-    name: "Java",
-    errors: 800,
-    solutions: 720,
-  },
-  {
-    name: "C#",
-    errors: 600,
-    solutions: 540,
-  },
-  {
-    name: "PHP",
-    errors: 400,
-    solutions: 350,
-  },
-  {
-    name: "TypeScript",
-    errors: 700,
-    solutions: 630,
-  },
-  {
-    name: "Ruby",
-    errors: 300,
-    solutions: 270,
-  },
-]
+interface ErrorDistributionChartProps {
+  data: Array<{
+    lang_or_framework: string
+    errors: number
+    solutions: number
+  }>
+  height?: number
+  margin?: { top: number; right: number; left: number; bottom: number }
+}
 
-export function ErrorDistributionChart() {
+export function ErrorDistributionChart({ 
+  data, 
+  height = 350, 
+  margin = { top: 5, right: 30, left: 20, bottom: 5 } 
+}: ErrorDistributionChartProps) {
+  // Transform data to match the chart's expected format
+  const chartData = data.map(item => ({
+    name: item.lang_or_framework,
+    errors: item.errors,
+    solutions: item.solutions
+  }))
+
   return (
-    <ResponsiveContainer width="100%" height={350}>
+    <ResponsiveContainer width="100%" height={height}>
       <BarChart
-        data={data}
-        margin={{
-          top: 5,
-          right: 30,
-          left: 20,
-          bottom: 5,
-        }}
+        data={chartData}
+        margin={margin}
       >
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" />
-        <YAxis />
+        <XAxis 
+          dataKey="name" 
+          tick={{ fontSize: 12 }}
+          interval={0}
+          angle={-45}
+          textAnchor="end"
+          height={60}
+        />
+        <YAxis 
+          tick={{ fontSize: 12 }}
+          domain={[0, 'dataMax + 5']} // Ensure some padding at the top
+        />
         <Tooltip
           content={({ active, payload, label }) => {
             if (active && payload && payload.length) {
@@ -76,8 +64,20 @@ export function ErrorDistributionChart() {
           }}
         />
         <Legend />
-        <Bar dataKey="errors" fill="#ec4899" name="Errors" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="solutions" fill="#8884d8" name="Solutions" radius={[4, 4, 0, 0]} />
+        <Bar 
+          dataKey="errors" 
+          fill="#ec4899" 
+          name="Errors" 
+          radius={[4, 4, 0, 0]} 
+          maxBarSize={40}
+        />
+        <Bar 
+          dataKey="solutions" 
+          fill="#8884d8" 
+          name="Solutions" 
+          radius={[4, 4, 0, 0]} 
+          maxBarSize={40}
+        />
       </BarChart>
     </ResponsiveContainer>
   )

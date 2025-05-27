@@ -55,23 +55,24 @@ export default function DashboardPage() {
     pending: 0,
     critical: 0
   });
+  const [weeklyErrors, setWeeklyErrors] = useState<number[]>([]);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
-  const csrfToken=getCookie("csrftoken")
+  const [isLoadingWeeklyErrors, setIsLoadingWeeklyErrors] = useState(true);
+  const csrftoken=getCookie("csrftoken")
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        if(!csrfToken){
-          throw new Error("scrf token not found")
+        if(!csrftoken){
+          throw new Error("csrf not found")
         }
-        const response = await fetch(`http://127.0.0.1:8000/bugtracker/errors/report/`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
-        },
+        
+        const response = await fetch('http://127.0.0.1:8000/bugtracker/errors/report/', {
+        method: 'get',
+        credentials: "include",
+        headers: { "X-CSRFToken": csrftoken ?? ""  },
       })
+
         if (!response.ok) {
           throw new Error('Failed to fetch stats');
         }
@@ -89,8 +90,48 @@ export default function DashboardPage() {
       }
     };
 
+    const fetchWeeklyErrors = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:8000/bugtracker/weekly-errors/', {
+        method: 'get',
+        credentials: "include",
+        headers: { "X-CSRFToken": csrftoken ?? ""  },
+      });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch weekly errors');
+        }
+        const data = await response.json();
+        
+        // Extract errors in order: Monday to Sunday
+        const errors = [
+          data[0]?.monday?.errors || 0,
+          data[1]?.tuesday?.errors || 0,
+          data[2]?.wednesday?.errors || 0,
+          data[3]?.thursday?.errors || 0,
+          data[4]?.friday?.errors || 0,
+          data[5]?.saturday?.errors || 0,
+          data[6]?.sunday?.errors || 0
+        ];
+        
+        setWeeklyErrors(errors);
+      } catch (error) {
+        console.error('Error fetching weekly errors:', error);
+      } finally {
+        setIsLoadingWeeklyErrors(false);
+      }
+    };
+
     fetchStats();
+    fetchWeeklyErrors();
   }, []);
+
+  // Scale the values for better visibility in the chart
+  const getScaledHeight = (value: number) => {
+    if (value === 0) return 5; // Minimum height for visibility
+    const maxValue = Math.max(...weeklyErrors, 1); // Ensure we don't divide by zero
+    return Math.max((value / maxValue) * 100, 5); // Scale to 100% with minimum 5%
+  };
 
   const statCards = [
     {
@@ -214,46 +255,54 @@ export default function DashboardPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="today">Today</SelectItem>
-                    {/* <SelectItem value="thisWeek">This Week</SelectItem>
+                    <SelectItem value="thisWeek">This Week</SelectItem>
                     <SelectItem value="thisMonth">This Month</SelectItem>
-                    <SelectItem value="last3Months">Last 3 Months</SelectItem> */}
+                    <SelectItem value="last3Months">Last 3 Months</SelectItem>
                   </SelectContent>
                 </Select>
               </CardHeader>
               <CardContent>
-                <div className="h-[200px] flex items-end gap-2">
-                  {[40, 25, 60, 42, 38, 65, 55].map((height, index) => (
-                    <div
-                      key={index}
-                      className="flex-1 space-y-2 flex flex-col items-center justify-end h-full"
-                    >
-                      <div
-                        className="w-full rounded-md bg-primary/80 transition-all hover:bg-primary relative group"
-                        style={{ height: `${height}%` }}
-                      >
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-foreground text-background rounded px-2 py-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                          {index === 0 && "Mon"}
-                          {index === 1 && "Tue"}
-                          {index === 2 && "Wed"}
-                          {index === 3 && "Thu"}
-                          {index === 4 && "Fri"}
-                          {index === 5 && "Sat"}
-                          {index === 6 && "Sun"}:{" "}
-                          {Math.floor((height / 100) * 20)} errors
+                {isLoadingWeeklyErrors ? (
+                  <div className="h-[200px] flex items-center justify-center">
+                    <div className="animate-pulse rounded-md bg-muted h-full w-full" />
+                  </div>
+                ) : (
+                  <div className="h-[200px] flex items-end gap-2">
+                    {weeklyErrors.map((count, index) => {
+                      const height = getScaledHeight(count);
+                      return (
+                        <div
+                          key={index}
+                          className="flex-1 space-y-2 flex flex-col items-center justify-end h-full"
+                        >
+                          <div
+                            className="w-full rounded-md bg-primary/80 transition-all hover:bg-primary relative group"
+                            style={{ height: `${height}%` }}
+                          >
+                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-foreground text-background rounded px-2 py-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                              {index === 0 && "Mon"}
+                              {index === 1 && "Tue"}
+                              {index === 2 && "Wed"}
+                              {index === 3 && "Thu"}
+                              {index === 4 && "Fri"}
+                              {index === 5 && "Sat"}
+                              {index === 6 && "Sun"}: {count} error{count !== 1 ? "s" : ""}
+                            </div>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {index === 0 && "M"}
+                            {index === 1 && "T"}
+                            {index === 2 && "W"}
+                            {index === 3 && "T"}
+                            {index === 4 && "F"}
+                            {index === 5 && "S"}
+                            {index === 6 && "S"}
+                          </span>
                         </div>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {index === 0 && "M"}
-                        {index === 1 && "T"}
-                        {index === 2 && "W"}
-                        {index === 3 && "T"}
-                        {index === 4 && "F"}
-                        {index === 5 && "S"}
-                        {index === 6 && "S"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
