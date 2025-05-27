@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -44,10 +44,85 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
+import { getCookie } from "@/utils/cookies";
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const { authenticated, username, accountType, loading } = useAuth();
+  const [stats, setStats] = useState({
+    total: 0,
+    resolved: 0,
+    pending: 0,
+    critical: 0
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const csrfToken=getCookie("csrftoken")
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        if(!csrfToken){
+          throw new Error("scrf token not found")
+        }
+        const response = await fetch(`http://127.0.0.1:8000/bugtracker/errors/report/`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+      })
+        if (!response.ok) {
+          throw new Error('Failed to fetch stats');
+        }
+        const data = await response.json();
+        setStats({
+          total: data.total || 0,
+          resolved: data.resolved || 0,
+          pending: data.pending || 0,
+          critical: data.critical || 0
+        });
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  const statCards = [
+    {
+      title: "Total Errors",
+      value: stats.total.toString(),
+      icon: Bug,
+      color: "bg-blue-500/20",
+      textColor: "text-blue-500",
+    },
+    {
+      title: "Resolved",
+      value: stats.resolved.toString(),
+      icon: CheckCircle2,
+      color: "bg-green-500/20",
+      textColor: "text-green-500",
+    },
+    {
+      title: "Pending",
+      value: stats.pending.toString(),
+      icon: Clock,
+      color: "bg-amber-500/20",
+      textColor: "text-amber-500",
+    },
+    {
+      title: "Critical",
+      value: stats.critical.toString(),
+      icon: AlertCircle,
+      color: "bg-red-500/20",
+      textColor: "text-red-500",
+    },
+  ];
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -72,36 +147,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[
-          {
-            title: "Total Errors",
-            value: "128",
-            icon: Bug,
-            color: "bg-blue-500/20",
-            textColor: "text-blue-500",
-          },
-          {
-            title: "Resolved",
-            value: "86",
-            icon: CheckCircle2,
-            color: "bg-green-500/20",
-            textColor: "text-green-500",
-          },
-          {
-            title: "Pending",
-            value: "42",
-            icon: Clock,
-            color: "bg-amber-500/20",
-            textColor: "text-amber-500",
-          },
-          {
-            title: "Critical",
-            value: "7",
-            icon: AlertCircle,
-            color: "bg-red-500/20",
-            textColor: "text-red-500",
-          },
-        ].map((item, index) => (
+        {statCards.map((item, index) => (
           <motion.div
             key={index}
             initial={{ opacity: 0, y: 20 }}
@@ -119,7 +165,13 @@ export default function DashboardPage() {
                   <p className="text-sm font-medium text-muted-foreground">
                     {item.title}
                   </p>
-                  <h3 className="text-2xl font-bold">{item.value}</h3>
+                  <h3 className="text-2xl font-bold">
+                    {isLoadingStats ? (
+                      <span className="inline-block h-8 w-8 animate-pulse rounded-md bg-muted" />
+                    ) : (
+                      item.value
+                    )}
+                  </h3>
                 </div>
               </CardContent>
             </Card>
@@ -162,9 +214,9 @@ export default function DashboardPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="today">Today</SelectItem>
-                    <SelectItem value="thisWeek">This Week</SelectItem>
+                    {/* <SelectItem value="thisWeek">This Week</SelectItem>
                     <SelectItem value="thisMonth">This Month</SelectItem>
-                    <SelectItem value="last3Months">Last 3 Months</SelectItem>
+                    <SelectItem value="last3Months">Last 3 Months</SelectItem> */}
                   </SelectContent>
                 </Select>
               </CardHeader>
@@ -173,7 +225,6 @@ export default function DashboardPage() {
                   {[40, 25, 60, 42, 38, 65, 55].map((height, index) => (
                     <div
                       key={index}
-                      // Add h-full here
                       className="flex-1 space-y-2 flex flex-col items-center justify-end h-full"
                     >
                       <div

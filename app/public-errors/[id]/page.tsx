@@ -56,7 +56,7 @@ export default function PublicErrorDetailsPage() {
   useEffect(() => {
     const fetchErrorDetails = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/bugtracker/public-errors/${id}/`)
+        const response = await fetch(`http://127.0.0.1:8000/bugtracker/public/${id}/`)
         if (!response.ok) {
           throw new Error('Failed to fetch error details')
         }
@@ -206,7 +206,7 @@ export default function PublicErrorDetailsPage() {
           <div className="text-center">
             <p className="text-muted-foreground">Error not found</p>
             <Button variant="outline" className="mt-4" asChild>
-              <Link href="/public-errors">Back to Public Errors</Link>
+              <Link href="/public">Back to Public Errors</Link>
             </Button>
           </div>
         </main>
@@ -240,7 +240,7 @@ export default function PublicErrorDetailsPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" asChild>
-                <Link href="/public-errors">
+                <Link href="/public">
                   <ArrowLeft className="h-4 w-4" />
                   <span className="sr-only">Back to Public Errors</span>
                 </Link>
@@ -553,7 +553,7 @@ export default function PublicErrorDetailsPage() {
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4">
                   <Button variant="ghost" size="sm" className="w-full justify-center" asChild>
-                    <Link href="/public-errors">Browse All Public Errors</Link>
+                    <Link href="/public">Browse All Public Errors</Link>
                   </Button>
                 </CardFooter>
               </Card>

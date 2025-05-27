@@ -354,7 +354,7 @@ export default function LandingPage() {
                   className="rounded-full h-12 px-8 text-base"
                   asChild
                 >
-                  <Link href="/public-errors">Browse Public Errors</Link>
+                  <Link href="/public">Browse Public Errors</Link>
                 </Button>
               </div>
               <div className="flex items-center justify-center gap-4 mt-6 text-sm text-muted-foreground">
