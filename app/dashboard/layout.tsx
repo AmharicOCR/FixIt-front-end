@@ -61,13 +61,34 @@ export default function DashboardLayout({
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
-  const { authenticated, username, accountType, loading } = useAuth();
+  const { authenticated, username, accountType, loading ,email} = useAuth();
+  // const [user, setUser] = useState({
+  //   accountType: "",
+  //   isadmin: false,
+  //   name: "",
+  //   email: "",
+  //   initials: "",
+  //   avatarUrl: "/placeholder.svg",
+  // });
+  const csrftoken = getCookie("csrftoken");
 
+async function fetchProfile() {
+  const profileResponse = await fetch("http://127.0.0.1:8000/user/profile/", {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": csrftoken ?? "",
+    },
+  });
+  console.log(profileResponse.body);
+}
+fetchProfile();
   const user = {
-    accountType: "premium",
-    name: "John Doe",
-    email: "john.doe@example.com",
-    initials: "JD",
+    accountType: accountType,
+    name: username,
+    email: email ? email.substring(0, 2) : "",
+    initials: username,
     avatarUrl: "/placeholder.svg",
   };
 
@@ -376,7 +397,7 @@ export default function DashboardLayout({
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="w-full justify-start">
                         <Avatar className="mr-2 h-6 w-6">
-                          <AvatarImage src={user.avatarUrl} alt={user.name} />
+                          <AvatarImage src={user.avatarUrl} alt={user.name || "User"} />
                           <AvatarFallback>{user.initials}</AvatarFallback>
                         </Avatar>
                         <span>{user.name}</span>
