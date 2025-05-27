@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const { authenticated, username, accountType, loading } = useAuth();
+  const { authenticated, username, accountType, is_admin } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,8 +73,8 @@ export default function LoginPage() {
       }
 
       // Login successful - redirect to dashboard
-      if (accountType=== "Super Admin" || accountType === "Moderator") {
-        window.location.href = "/admin/dashboard"
+      if (is_admin) {
+        window.location.href = "/admin/"
 
       }
       else if (accountType === "Premium" || accountType === "Free") {

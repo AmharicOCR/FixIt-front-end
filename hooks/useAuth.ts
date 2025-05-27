@@ -8,12 +8,14 @@ export function useAuth() {
     accountType: string | null;
     email: string | null;
     loading: boolean;
+    is_admin?: boolean;
   }>({
     authenticated: false,
     username: null,
     accountType: null,
     email: null,
     loading: true,
+    is_admin: false,
   });
 
   useEffect(() => {
@@ -32,6 +34,7 @@ export function useAuth() {
             accountType: data.accountType || null,
             email: data.email || null,
             loading: false,
+            is_admin: data.is_admin || false,
           });
         } else {
           setAuthState({
