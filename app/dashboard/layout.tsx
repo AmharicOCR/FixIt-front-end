@@ -281,7 +281,7 @@ fetchProfile();
                 >
                   My Errors
                 </NavItem>
-                {!loading && authenticated && accountType === "premium" && (
+                {authenticated && accountType === "Premium" && (
                   <NavItem
                     href="/dashboard/teams"
                     icon={Users}
@@ -365,7 +365,7 @@ fetchProfile();
                   >
                     My Errors
                   </NavItem>
-                  {!loading && authenticated && accountType === "premium" && (
+                  {authenticated && accountType === "Premium" && (
                     <NavItem
                       href="/dashboard/teams"
                       icon={Users}

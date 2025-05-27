@@ -227,7 +227,7 @@ export default function DashboardPage() {
       >
         <TabsList
           className={`grid w-full max-w-lg rounded-lg ${
-            accountType === "premium" ? "grid-cols-3" : "grid-cols-2"
+            accountType === "Premium" ? "grid-cols-3" : "grid-cols-2"
           }`}
         >
           <TabsTrigger value="overview" className="rounded-lg">
@@ -236,7 +236,7 @@ export default function DashboardPage() {
           <TabsTrigger value="recent-errors" className="rounded-lg">
             Recent Errors
           </TabsTrigger>
-          {!loading && authenticated && accountType === "premium" && (
+          {authenticated && accountType === "Premium" && (
             <TabsTrigger value="assigned-to-me">Assigned to Me</TabsTrigger>
           )}
         </TabsList>
@@ -527,7 +527,7 @@ export default function DashboardPage() {
               <CardContent className="px-6">
                 <div
                   className={`grid gap-4 ${
-                    accountType === "premium" ? "grid-cols-2" : "grid-cols-1"
+                    accountType === "Premium" ? "grid-cols-2" : "grid-cols-1"
                   }`}
                 >
                   <Button
@@ -565,7 +565,7 @@ export default function DashboardPage() {
                     className="h-auto justify-start gap-2 p-3 text-sm rounded-lg"
                     asChild
                   >
-                    {!loading && authenticated && accountType === "premium" && (
+                    {authenticated && accountType === "Premium" && (
                       <Link href="/dashboard/teams">
                         <Users className="h-5 w-5 text-primary" />
                         <div className="text-left">
@@ -801,9 +801,9 @@ export default function DashboardPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem>View details</DropdownMenuItem>
-                          {!loading &&
+                          {
                             authenticated &&
-                            accountType === "premium" && (
+                            accountType === "Premium" && (
                               <DropdownMenuItem>Assign to me</DropdownMenuItem>
                             )}
                           <DropdownMenuItem>Mark as resolved</DropdownMenuItem>

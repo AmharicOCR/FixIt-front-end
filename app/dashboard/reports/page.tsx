@@ -172,12 +172,12 @@ export default function ReportsPage() {
           onValueChange={setActiveTab}
         >
           <TabsList className={`grid w-full sm:w-[500px] ${
-                  accountType === "premium" ? "grid-cols-3" : "grid-cols-2"
+                  accountType === "Premium" ? "grid-cols-3" : "grid-cols-2"
                 }`}>
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            {!loading &&
+            {
               authenticated &&
-              accountType === "premium" &&
+              accountType === "Premium" &&
               (
                 <TabsTrigger value="team">Team Performance</TabsTrigger>
               )}

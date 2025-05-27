@@ -151,7 +151,7 @@ export default function MyErrorsPage() {
             className="w-full sm:w-auto"
             onValueChange={setActiveTab}
           >
-            {authenticated && accountType === "premium" && (
+            {authenticated && accountType === "Premium" && (
               <TabsList className="grid w-full grid-cols-2 sm:w-[400px]">
                 <TabsTrigger value="created">Created By Me</TabsTrigger>
                 <TabsTrigger value="assigned">Assigned To Me</TabsTrigger>
@@ -304,7 +304,7 @@ export default function MyErrorsPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem>Update status</DropdownMenuItem>
                           <DropdownMenuItem>Add solution</DropdownMenuItem>
-                          {authenticated && accountType === "premium" && activeTab === "created" && (
+                          {authenticated && accountType === "Premium" && activeTab === "created" && (
                             <DropdownMenuItem>
                               Assign to someone
                             </DropdownMenuItem>
