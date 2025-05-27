@@ -1,6 +1,8 @@
 "use client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
+import { useEffect, useState } from "react"
+import { getCookie } from "@/utils/cookies";
 
 interface ErrorCategoryReportProps {
   date?: Date;
@@ -11,6 +13,13 @@ interface ErrorCategoryReportProps {
   }[];
   loading?: boolean;
   error?: boolean;
+}
+
+interface FrameworkErrorData {
+  [key: string]: {
+    errors: number;
+    percentage: string;
+  };
 }
 
 const COLORS = ["#3b82f6", "#f43f5e", "#10b981", "#f59e0b", "#a855f7", "#64748b"]
@@ -27,11 +36,53 @@ const getFilteredData = (date: Date | undefined, baseData: {name: string, value:
 }
 
 export function ErrorCategoryReport({ date, data, loading, error }: ErrorCategoryReportProps) {
-  if (loading) {
+  const [frameworkData, setFrameworkData] = useState<{name: string, value: number}[]>([]);
+  const [frameworkLoading, setFrameworkLoading] = useState(true);
+  const [frameworkError, setFrameworkError] = useState(false);
+  const csrftoken=getCookie("csrftoken")
+
+  useEffect(() => {
+    const fetchFrameworkData = async () => {
+      try {
+        setFrameworkLoading(true);
+        const response = await fetch('http://127.0.0.1:8000/bugtracker/framework-error/',{
+          credentials: "include",
+          headers:{
+            'Content-Type': 'application/json',
+            "X-CSRFToken":  csrftoken ?? ""
+          }
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch framework data');
+        }
+        const data: FrameworkErrorData[] = await response.json();
+        
+        // Transform the API data into the format we need
+        const transformedData = data.flatMap(item => 
+          Object.entries(item).map(([name, { errors }]) => ({
+            name,
+            value: errors
+          }))
+        );
+        
+        setFrameworkData(transformedData);
+        setFrameworkError(false);
+      } catch (error) {
+        console.error('Error fetching framework data:', error);
+        setFrameworkError(true);
+      } finally {
+        setFrameworkLoading(false);
+      }
+    };
+
+    fetchFrameworkData();
+  }, []);
+
+  if (loading || frameworkLoading) {
     return <div className="flex items-center justify-center h-64">Loading...</div>;
   }
 
-  if (error) {
+  if (error || frameworkError) {
     return <div className="flex items-center justify-center h-64 text-red-500">Error loading data</div>;
   }
 
@@ -45,15 +96,6 @@ export function ErrorCategoryReport({ date, data, loading, error }: ErrorCategor
     { name: "C#", value: 10 },
     { name: "PHP", value: 5 },
     { name: "TypeScript", value: 5 },
-  ]);
-
-  const frameworkData = getFilteredData(date, [
-    { name: "React", value: 35 },
-    { name: "Angular", value: 20 },
-    { name: "Django", value: 15 },
-    { name: "Spring", value: 10 },
-    { name: "Laravel", value: 10 },
-    { name: "Vue", value: 10 },
   ]);
 
   return (

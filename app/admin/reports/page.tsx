@@ -89,7 +89,7 @@ export default function ReportsPage() {
       })
 
     // Fetch platform growth
-    fetch('http://127.0.0.1:8000/bugtracker/platfrom-growth/', {
+    fetch('http://127.0.0.1:8000/bugtracker/platform-growth/', {
         method: 'GET',
         credentials: "include",
         headers: {

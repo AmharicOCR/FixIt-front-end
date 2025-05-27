@@ -131,6 +131,7 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
   const [solutionComments, setSolutionComments] = useState<Record<number, string>>({})
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
   const [editingCommentText, setEditingCommentText] = useState("")
+  const [isMyError, setisMyError] = useState(false)
 
   // Fetch data on mount
   useEffect(() => {
@@ -183,7 +184,25 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
       }
     }
 
+    
+
+    const fetchMyerrors= async()=>{
+       const response = await fetch("http://127.0.0.1:8000/bugtracker/my-errors/", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken??"",
+          },
+        });
+
+        const data = await response.json();
+        const myids = data.map((item: any) => item.id);
+        setisMyError(isInArray(id, myids))
+    }
+
     if (authenticated) {
+      fetchMyerrors()
       fetchData()
     }
   }, [id, csrfToken, toast, authenticated])
@@ -685,14 +704,9 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
   if (!authenticated) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-center space-y-4">
-          <h1 className="text-2xl font-bold">Authentication Required</h1>
-          <p className="text-muted-foreground">Please sign in to view this error details</p>
-          <Button asChild>
-            <Link href="/login">Sign In</Link>
-          </Button>
-        </div>
-      </div>
+  <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+</div>
+
     )
   }
 
@@ -705,6 +719,7 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
       </div>
     )
   }
+  
 
   return (
     <div className="space-y-6">
@@ -774,16 +789,19 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
                 <Share2 className="mr-2 h-4 w-4" />
                 Share
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setIsEditing(true)}
-                className="rounded-lg gap-1"
-              >
-                <Edit className="h-4 w-4" />
-                Edit
-              </Button>
-              <DropdownMenu>
+              {isMyError && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                  className="rounded-lg gap-1"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </Button>
+              )}
+              {isMyError &&(
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="rounded-lg">
                     <MoreHorizontal className="mr-2 h-4 w-4" />
@@ -805,7 +823,8 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
                     Delete error
                   </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
+              </DropdownMenu>)}
+              
             </>
           )}
         </div>
@@ -1357,6 +1376,7 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
                 <Select 
                   value={currentStatus}
                   onValueChange={handleStatusChange}
+                  disabled={!isMyError} 
                 >
                   <SelectTrigger id="status">
                     <SelectValue placeholder="Select status" />
@@ -1374,6 +1394,7 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
                 <Select 
                   value={currentPriority}
                   onValueChange={handlePriorityChange}
+                  disabled={!isMyError} 
                 >
                   <SelectTrigger id="priority">
                     <SelectValue placeholder="Select priority" />
@@ -1423,4 +1444,8 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
       </div>
     </div>
   )
+}
+
+function isInArray(id: string, myids: any[]) {
+  return myids.includes(Number(id)) || myids.includes(id);
 }
