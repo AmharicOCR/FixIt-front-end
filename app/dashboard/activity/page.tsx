@@ -496,13 +496,13 @@ export default function ActivityPage() {
             {!loading && authenticated && (
               <TabsList
                 className={`grid w-full rounded-lg ${
-                  accountType === "premium" ? "grid-cols-4" : "grid-cols-3"
+                  accountType === "Premium" ? "grid-cols-4" : "grid-cols-3"
                 }`}
               >
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="errors">Errors</TabsTrigger>
                 <TabsTrigger value="solutions">Solutions</TabsTrigger>
-                {accountType === "premium" && (
+                {authenticated && accountType === "Premium" && (
                   <TabsTrigger value="team">Team</TabsTrigger>
                 )}
               </TabsList>
