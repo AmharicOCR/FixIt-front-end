@@ -242,167 +242,485 @@ export default function ReportsPage() {
   }
 
   const handleExportAllReports = async () => {
-    setIsExporting(true);
-    const doc = new jsPDF('p', 'mm', 'a4');
-    let yPos = 15; // Initial Y position for content
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 15;
-    const contentWidth = pageWidth - 2 * margin;
+  setIsExporting(true);
+  const doc = new jsPDF('p', 'mm', 'a4');
+  let yPos = 15;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 15;
+  const contentWidth = pageWidth - 2 * margin;
+  const lineHeight = 7;
+  const cellPadding = 4;
 
-    // Helper function to add image to PDF and manage yPosition
-    const addImageToPdf = async (canvas: HTMLCanvasElement, sectionTitle: string) => {
-      const imgData = canvas.toDataURL('image/png');
-      const imgProps = doc.getImageProperties(imgData);
-      let imgHeight = (imgProps.height * contentWidth) / imgProps.width;
+  // Helper functions (same as before)
+  const addImageToPdf = async (canvas: HTMLCanvasElement, sectionTitle: string) => {
+    const imgData = canvas.toDataURL('image/png');
+    const imgProps = doc.getImageProperties(imgData);
+    let imgHeight = (imgProps.height * contentWidth) / imgProps.width;
 
-      // Check if new page is needed for the image
-      if (yPos + imgHeight > pageHeight - margin) {
-        doc.addPage();
-        yPos = margin;
-        // Optionally re-add section title if it continues on a new page
-        doc.setFontSize(18);
-        doc.text(`${sectionTitle} (Continued)`, margin, yPos);
-        yPos += 8;
-      }
-      
-      doc.addImage(imgData, 'PNG', margin, yPos, contentWidth, imgHeight);
-      yPos += imgHeight + 10; // Add some padding after the image
-    };
-
-
-    doc.setFontSize(22);
-    doc.text("Complete Report", pageWidth / 2, yPos, { align: 'center' });
-    yPos += 15;
-
-    // 1. Capture Summary Cards (ensure the container has id="summary-cards-container")
-    const summaryContainer = document.getElementById('summary-cards-container');
-    if (summaryContainer) {
-      if (yPos + 20 > pageHeight - margin) { doc.addPage(); yPos = margin; }
+    if (yPos + imgHeight > pageHeight - margin) {
+      doc.addPage();
+      yPos = margin;
       doc.setFontSize(18);
-      doc.text("Platform Summary", margin, yPos);
+      doc.text(`${sectionTitle} (Continued)`, margin, yPos);
       yPos += 8;
+    }
+    
+    doc.addImage(imgData, 'PNG', margin, yPos, contentWidth, imgHeight);
+    yPos += imgHeight + 10;
+  };
 
-      try {
-        const canvas = await html2canvas(summaryContainer, { 
-            scale: 2, 
-            useCORS: true, 
-            backgroundColor: '#ffffff', // Ensures non-transparent background
-            logging: false 
+  const checkPageBreak = (requiredSpace: number) => {
+    if (yPos + requiredSpace > pageHeight - margin) {
+      doc.addPage();
+      yPos = margin;
+      return true;
+    }
+    return false;
+  };
+
+  const addSectionHeader = (title: string) => {
+    checkPageBreak(20);
+    doc.setFontSize(18);
+    doc.setTextColor(0, 0, 0);
+    doc.text(title, margin, yPos);
+    yPos += 10;
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPos, pageWidth - margin, yPos);
+    yPos += 10;
+  };
+
+  const addDataTable = (headers: string[], data: any[][], title?: string) => {
+    if (title) {
+      checkPageBreak(15);
+      doc.setFontSize(14);
+      doc.text(title, margin, yPos);
+      yPos += 8;
+    }
+
+    const colCount = headers.length;
+    const colWidth = contentWidth / colCount;
+    const rowHeight = lineHeight + cellPadding * 2;
+
+    // Check if we have space for at least header + 1 row
+    checkPageBreak(rowHeight * 2);
+
+    // Draw table header
+    doc.setFontSize(10);
+    doc.setFillColor(41, 128, 185);
+    doc.setTextColor(255, 255, 255);
+    
+    headers.forEach((header, i) => {
+      doc.rect(
+        margin + i * colWidth, 
+        yPos, 
+        colWidth, 
+        rowHeight, 
+        'F'
+      );
+      doc.text(
+        header,
+        margin + i * colWidth + cellPadding,
+        yPos + cellPadding + lineHeight / 2
+      );
+    });
+
+    yPos += rowHeight;
+    doc.setTextColor(0, 0, 0);
+
+    // Draw table rows
+    doc.setFontSize(9);
+    data.forEach((row, rowIndex) => {
+      // Check if we need a new page before drawing this row
+      if (checkPageBreak(rowHeight)) {
+        // Redraw headers on new page
+        doc.setFillColor(41, 128, 185);
+        doc.setTextColor(255, 255, 255);
+        headers.forEach((header, i) => {
+          doc.rect(
+            margin + i * colWidth, 
+            yPos, 
+            colWidth, 
+            rowHeight, 
+            'F'
+          );
+          doc.text(
+            header,
+            margin + i * colWidth + cellPadding,
+            yPos + cellPadding + lineHeight / 2
+          );
         });
-        await addImageToPdf(canvas, "Platform Summary");
+        yPos += rowHeight;
+        doc.setTextColor(0, 0, 0);
+      }
+
+      // Alternate row colors
+      doc.setFillColor(rowIndex % 2 === 0 ? 240 : 255, 240, 240);
+      
+      // Draw row background
+      doc.rect(margin, yPos, contentWidth, rowHeight, 'F');
+      
+      // Draw cell borders and text
+      headers.forEach((_, i) => {
+        doc.rect(
+          margin + i * colWidth, 
+          yPos, 
+          colWidth, 
+          rowHeight
+        );
+        
+        const cellValue = row[i] !== undefined ? String(row[i]) : '';
+        doc.text(
+          cellValue,
+          margin + i * colWidth + cellPadding,
+          yPos + cellPadding + lineHeight / 2,
+          { maxWidth: colWidth - cellPadding * 2 }
+        );
+      });
+
+      yPos += rowHeight;
+    });
+
+    yPos += 10; // Add some space after table
+  };
+
+  // Cover Page (same as before)
+  doc.setFontSize(22);
+  doc.text("Complete Platform Report", pageWidth / 2, yPos, { align: 'center' });
+  yPos += 15;
+  
+  doc.setFontSize(14);
+  doc.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPos, { align: 'center' });
+  yPos += 10;
+  
+  if (date) {
+    doc.text(`Report date: ${format(date, "PPP")}`, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 20;
+  }
+
+  // 1. Platform Summary Section (same as before)
+  addSectionHeader("Platform Summary");
+  
+  const summaryContainer = document.getElementById('summary-cards-container');
+  if (summaryContainer) {
+    try {
+      const canvas = await html2canvas(summaryContainer, { 
+        scale: 2, 
+        useCORS: true, 
+        backgroundColor: '#ffffff',
+        logging: false 
+      });
+      await addImageToPdf(canvas, "Platform Summary");
+    } catch (e) {
+      console.error("Error capturing summary cards:", e);
+      doc.setTextColor(255, 0, 0);
+      doc.text("Could not capture summary cards.", margin, yPos);
+      doc.setTextColor(0, 0, 0);
+      yPos += 10;
+    }
+  }
+
+  if (platformStats) {
+    addDataTable(
+      ['Metric', 'Value', 'Change'],
+      [
+        ['Total Users', platformStats.total_users, platformStats.change_in_users],
+        ['Total Errors', platformStats.total_errors, platformStats.change_in_errors],
+        ['Total Solutions', platformStats.total_solutions, platformStats.change_in_solutions],
+        ['Resolution Rate', platformStats.solution_rate, platformStats.change_in_solution_rate]
+      ],
+      'Detailed Platform Statistics'
+    );
+  }
+
+  // 2. Platform Growth Data (same as before)
+  if (platformGrowth.length > 0) {
+    addSectionHeader("Platform Growth Data");
+    
+    const growthData = platformGrowth.map(item => {
+      const month = Object.keys(item)[0];
+      const data = item[month];
+      return [
+        month,
+        data.users || 0,
+        data.errors || 0,
+        data.solutions || 0,
+        data.comments || 0,
+        data.free || 0,
+        data.premium || 0
+      ];
+    });
+
+    addDataTable(
+      ['Month', 'Users', 'Errors', 'Solutions', 'Comments', 'Free', 'Premium'],
+      growthData
+    );
+  }
+
+  // 3. Enhanced Tab Content Capture
+  addSectionHeader("Detailed Reports");
+  
+  const tabDefinitions = [
+    { 
+      value: 'overview', 
+      title: 'Overview Report',
+      component: PlatformUsageReport,
+      props: { 
+        data: transformGrowthData(platformGrowth),
+        loading: loading.growth,
+        error: error.growth
+      }
+    },
+    { 
+      value: 'users', 
+      title: 'User Activity Report',
+      component: UserActivityReport,
+      props: {
+        activityData: transformGrowthData(userActivity),
+        growthData: transformGrowthData(userGrowth),
+        loading: loading.activity || loading.userGrowth,
+        error: error.activity || error.userGrowth
+      }
+    },
+    { 
+      value: 'errors', 
+      title: 'Error Categories Report',
+      component: ErrorCategoryReport,
+      props: {
+        data: transformLanguageData(languageErrors),
+        loading: loading.langErrors,
+        error: error.langErrors
+      }
+    },
+    { 
+      value: 'resolution', 
+      title: 'Resolution Time Report',
+      component: ResolutionTimeReport,
+      props: {
+        data: transformResolutionData(resolutionTime),
+        loading: loading.resolution,
+        error: error.resolution
+      }
+    }
+  ];
+
+  // Find the tabs container
+  const tabsContainer = document.querySelector('[data-orientation="horizontal"]');
+  const tablistElement = tabsContainer?.querySelector('[role="tablist"]');
+  
+  // Store original active tab
+  let originalActiveTab: HTMLElement | null = null;
+  if (tablistElement) {
+    originalActiveTab = tablistElement.querySelector('[role="tab"][data-state="active"]');
+  }
+
+  for (const tabDef of tabDefinitions) {
+    checkPageBreak(25);
+    doc.setFontSize(18);
+    doc.text(tabDef.title, margin, yPos);
+    yPos += 8;
+
+    // Try to capture the rendered tab content first
+    let captured = false;
+    if (tablistElement) {
+      const trigger = tablistElement.querySelector<HTMLButtonElement>(`[role="tab"][value="${tabDef.value}"]`);
+      
+      if (trigger) {
+        // Temporarily activate the tab
+        trigger.click();
+        await new Promise(resolve => setTimeout(resolve, 700));
+
+        const contentPanelId = trigger.getAttribute('aria-controls');
+        let contentElement: HTMLElement | null = null;
+        
+        if (contentPanelId) {
+          contentElement = document.getElementById(contentPanelId);
+        }
+        if (!contentElement) {
+          contentElement = document.querySelector<HTMLElement>(`div[role="tabpanel"][data-state="active"]`);
+        }
+        if (!contentElement && trigger.id) {
+          contentElement = document.querySelector<HTMLElement>(`div[role="tabpanel"][aria-labelledby="${trigger.id}"]`);
+        }
+        
+        if (contentElement) {
+          contentElement.scrollTop = 0;
+
+          try {
+            const canvas = await html2canvas(contentElement, {
+              scale: 2,
+              useCORS: true,
+              logging: false,
+              backgroundColor: '#ffffff',
+              height: contentElement.scrollHeight,
+              width: contentElement.scrollWidth,
+              windowHeight: contentElement.scrollHeight,
+              windowWidth: contentElement.scrollWidth,
+            });
+            await addImageToPdf(canvas, tabDef.title);
+            captured = true;
+          } catch (e) {
+            console.error(`Error capturing tab content for ${tabDef.title}:`, e);
+          }
+        }
+      }
+    }
+
+    // If we couldn't capture the rendered tab, create a temporary render
+    if (!captured) {
+      try {
+        // Create a temporary container
+        const tempContainer = document.createElement('div');
+        tempContainer.style.position = 'absolute';
+        tempContainer.style.left = '-9999px';
+        tempContainer.style.width = `${contentWidth}px`;
+        document.body.appendChild(tempContainer);
+        
+        // Render the component directly
+        const { createRoot } = await import('react-dom/client');
+        const root = createRoot(tempContainer);
+        root.render(
+          // Use React.createElement for dynamic component rendering with props
+          // eslint-disable-next-line react/no-children-prop
+          (window as any).React.createElement(tabDef.component, { ...tabDef.props })
+        );
+        
+        // Wait for rendering to complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Capture the temporary container
+        const canvas = await html2canvas(tempContainer, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          width: contentWidth
+        });
+        
+        await addImageToPdf(canvas, tabDef.title);
+        
+        // Clean up
+        root.unmount();
+        document.body.removeChild(tempContainer);
       } catch (e) {
-        console.error("Error capturing summary cards:", e);
-        if (yPos + 10 > pageHeight - margin) { doc.addPage(); yPos = margin; }
-        doc.setTextColor(255,0,0);
-        doc.text("Could not capture summary cards.", margin, yPos);
-        doc.setTextColor(0,0,0);
+        console.error(`Error creating temporary render for ${tabDef.title}:`, e);
+        doc.setTextColor(255, 0, 0);
+        doc.text(`Could not capture content for ${tabDef.title}.`, margin, yPos);
+        doc.setTextColor(0, 0, 0);
         yPos += 10;
       }
-    } else {
-      console.warn("Summary cards container (id='summary-cards-container') not found.");
     }
 
-    // 2. Capture Tabs
-    const tabDefinitions = [
-      { value: 'overview', title: 'Overview Report' },
-      { value: 'users', title: 'User Activity Report' },
-      { value: 'errors', title: 'Error Categories Report' },
-      { value: 'resolution', title: 'Resolution Time Report' },
-    ];
-
-    const tablistElement = document.querySelector('[role="tablist"]');
-    if (!tablistElement) {
-        console.error("Tablist element not found. Cannot export tab reports.");
-        if (yPos + 10 > pageHeight - margin) { doc.addPage(); yPos = margin; }
-        doc.setTextColor(255,0,0);
-        doc.text("Error: Tab navigation not found.", margin, yPos);
-        doc.setTextColor(0,0,0);
-        yPos += 10;
-    } else {
-        const originalActiveTrigger = tablistElement.querySelector<HTMLButtonElement>('[role="tab"][data-state="active"]');
-
-        for (const tabDef of tabDefinitions) {
-            if (yPos + 25 > pageHeight - margin) { // Check space for title + some content
-                doc.addPage();
-                yPos = margin;
-            }
-
-            const trigger = tablistElement.querySelector<HTMLButtonElement>(`[role="tab"][value="${tabDef.value}"]`);
-            
-            if (!trigger) {
-                console.warn(`Trigger for tab ${tabDef.value} not found.`);
-                doc.setFontSize(12);
-                doc.setTextColor(255, 0, 0);
-                doc.text(`Tab trigger for "${tabDef.title}" not found. Skipping.`, margin, yPos);
-                doc.setTextColor(0,0,0);
-                yPos += 10;
-                continue;
-            }
-
-            trigger.click();
-            // Wait for tab content to be visible and rendered. Adjust delay if necessary.
-            await new Promise(resolve => setTimeout(resolve, 700)); 
-
-            const contentPanelId = trigger.getAttribute('aria-controls');
-            let contentElement: HTMLElement | null = null;
-            if (contentPanelId) {
-                contentElement = document.getElementById(contentPanelId);
-            }
-            if (!contentElement) { // Fallback selectors
-                contentElement = document.querySelector<HTMLElement>(`div[role="tabpanel"][data-state="active"]`);
-            }
-            if (!contentElement && trigger.id) {
-                contentElement = document.querySelector<HTMLElement>(`div[role="tabpanel"][aria-labelledby="${trigger.id}"]`);
-            }
-            
-            doc.setFontSize(18);
-            doc.text(tabDef.title, margin, yPos);
-            yPos += 8;
-
-            if (contentElement) {
-                contentElement.scrollTop = 0; // Ensure top of content is captured
-
-                try {
-                    const canvas = await html2canvas(contentElement, {
-                        scale: 2,
-                        useCORS: true,
-                        logging: false,
-                        backgroundColor: '#ffffff',
-                        height: contentElement.scrollHeight, // Capture full scrollable height
-                        width: contentElement.scrollWidth,   // Capture full scrollable width
-                        windowHeight: contentElement.scrollHeight,
-                        windowWidth: contentElement.scrollWidth,
-                    });
-                    await addImageToPdf(canvas, tabDef.title);
-                } catch (e) {
-                    console.error(`Error capturing tab content for ${tabDef.title}:`, e);
-                    if (yPos + 10 > pageHeight - margin) { doc.addPage(); yPos = margin; }
-                    doc.setTextColor(255,0,0);
-                    doc.text(`Could not capture content for ${tabDef.title}.`, margin, yPos);
-                    doc.setTextColor(0,0,0);
-                    yPos += 10;
-                }
-            } else {
-                console.warn(`Content element for tab ${tabDef.value} not found after activation.`);
-                if (yPos + 10 > pageHeight - margin) { doc.addPage(); yPos = margin; }
-                doc.setTextColor(255,0,0);
-                doc.text(`Content for "${tabDef.title}" was not found.`, margin, yPos);
-                doc.setTextColor(0,0,0);
-                yPos += 10;
-            }
+    // Add supplemental data for each tab
+    switch (tabDef.value) {
+      case 'overview':
+        if (platformGrowth.length > 0) {
+          addDataTable(
+            ['Month', 'Users', 'Errors', 'Solutions', 'Comments', 'Free', 'Premium'],
+            platformGrowth.map(item => {
+              const month = Object.keys(item)[0];
+              const data = item[month];
+              return [
+                month,
+                data.users || 0,
+                data.errors || 0,
+                data.solutions || 0,
+                data.comments || 0,
+                data.free || 0,
+                data.premium || 0
+              ];
+            }),
+            'Platform Growth Data'
+          );
         }
-
-        // Restore the originally active tab
-        if (originalActiveTrigger) {
-            originalActiveTrigger.click();
-            await new Promise(resolve => setTimeout(resolve, 100));
+        break;
+        
+      case 'users':
+        if (userActivity.length > 0) {
+          addDataTable(
+            ['Month', 'Active Users', 'Errors Reported', 'Solutions Provided'],
+            userActivity.map(item => {
+              const month = Object.keys(item)[0];
+              const data = item[month];
+              return [month, data.users || 0, data.errors || 0, data.solutions || 0];
+            }),
+            'User Activity Data'
+          );
         }
+        if (userGrowth.length > 0) {
+          addDataTable(
+            ['Month', 'New Users', 'Free Users', 'Premium Users'],
+            userGrowth.map(item => {
+              const month = Object.keys(item)[0];
+              const data = item[month];
+              return [month, data.users || 0, data.free || 0, data.premium || 0];
+            }),
+            'User Growth Data'
+          );
+        }
+        break;
+        
+      case 'errors':
+        if (languageErrors.length > 0) {
+          addDataTable(
+            ['Language', 'Error Count', 'Percentage'],
+            languageErrors.map(item => {
+              const lang = Object.keys(item)[0];
+              const data = item[lang];
+              return [lang, data.errors, data.percentage];
+            }),
+            'Error Distribution by Language'
+          );
+        }
+        break;
+        
+      case 'resolution':
+        if (resolutionTime.length > 0) {
+          addDataTable(
+            ['Month', 'Average Resolution (hours)', 'Median Resolution (hours)'],
+            resolutionTime.map(item => {
+              const month = Object.keys(item)[0];
+              const data = item[month];
+              return [month, data.average_hours.toFixed(2), data.median_hours.toFixed(2)];
+            }),
+            'Resolution Time Data'
+          );
+        }
+        break;
     }
+  }
 
-    doc.save('All_Reports.pdf');
-    setIsExporting(false);
-  };
+  // Restore original active tab if we changed it
+  if (originalActiveTab) {
+    (originalActiveTab as HTMLElement).click();
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  // Final Page - Summary (same as before)
+  doc.addPage();
+  yPos = margin;
+  addSectionHeader("Report Summary");
+  
+  doc.setFontSize(14);
+  doc.text("This report contains:", margin, yPos);
+  yPos += 10;
+  
+  doc.text("- Platform summary statistics", margin, yPos);
+  yPos += 7;
+  doc.text("- Detailed growth metrics", margin, yPos);
+  yPos += 7;
+  doc.text("- Visual reports from all tabs", margin, yPos);
+  yPos += 7;
+  doc.text("- Raw data tables for reference", margin, yPos);
+  yPos += 15;
+  
+  doc.text("Report generated by BugTracker Analytics", margin, yPos);
+  yPos += 7;
+  doc.text(new Date().toLocaleString(), margin, yPos);
+
+  doc.save(`BugTracker_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  setIsExporting(false);
+};
 
   return (
     <div className="space-y-6">
