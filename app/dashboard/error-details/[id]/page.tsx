@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label"
 import type React from "react"
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
-import { ArrowLeft, Bug, CheckCircle2, Clock, MessageSquare, MoreHorizontal, Share2, ThumbsUp, Trash2, Edit, Save, X } from "lucide-react"
+import { ArrowLeft, Bug, CheckCircle2, Clock, MessageSquare, MoreHorizontal, Share2, ThumbsUp, ThumbsDown, Trash2, Edit, Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -52,31 +52,27 @@ interface ErrorDetails {
   language: string | null
   framework: string | null
   tags: string[]
+  solutions: Solution[]
+  error_comments: Comment[]
 }
 
 interface Comment {
-  id: string
-  text: string
-  author: {
-    name: string
-    avatar?: string
-    initials: string
-  }
+  id: number
+  content: string
+  created_by: string
   created_at: string
 }
 
 interface Solution {
-  id: string
+  id: number
   title: string
-  description: string
-  author: {
-    name: string
-    avatar?: string
-    initials: string
-  }
+  solution: string
+  is_private: boolean
+  created_by: string
   created_at: string
   upvotes: number
-  is_accepted: boolean
+  downvotes: number
+  comments?: Comment[]
 }
 
 interface Activity {
@@ -132,6 +128,9 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
     tags: [],
     visible_to_public: false,
   })
+  const [solutionComments, setSolutionComments] = useState<Record<number, string>>({})
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
+  const [editingCommentText, setEditingCommentText] = useState("")
 
   // Fetch data on mount
   useEffect(() => {
@@ -168,20 +167,8 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
           tags: [...errorData.tags],
           visible_to_public: errorData.visible_to_public,
         })
-
-        // Fetch comments
-        const commentsRes = await fetch(`http://127.0.0.1:8000/bugtracker/errors/${id}/comments/`, {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'X-CSRFToken': csrfToken,
-          }
-        })
-
-        if (commentsRes.ok) {
-          const commentsData = await commentsRes.json()
-          setComments(commentsData)
-        }
+        setComments(errorData.error_comments || [])
+        setSolutions(errorData.solutions || [])
 
         setIsLoading(false)
 
@@ -201,31 +188,30 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
     }
   }, [id, csrfToken, toast, authenticated])
 
-
   const handleShare = async () => {
-  try {
-    if (navigator.share) {
-      await navigator.share({
-        title: error?.title || "Error Details",
-        text: `Check out this error: ${error?.title}`,
-        url: window.location.href,
-      });
-    } else {
-      await navigator.clipboard.writeText(window.location.href);
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: error?.title || "Error Details",
+          text: `Check out this error: ${error?.title}`,
+          url: window.location.href,
+        });
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        toast({
+          title: "Link copied!",
+          description: "The URL has been copied to your clipboard.",
+        });
+      }
+    } catch (error) {
+      console.error("Error sharing:", error);
       toast({
-        title: "Link copied!",
-        description: "The URL has been copied to your clipboard.",
+        title: "Error",
+        description: "Failed to share. Please try again.",
+        variant: "destructive",
       });
     }
-  } catch (error) {
-    console.error("Error sharing:", error);
-    toast({
-      title: "Error",
-      description: "Failed to share. Please try again.",
-      variant: "destructive",
-    });
-  }
-};
+  };
 
   // Handle status change
   const handleStatusChange = async (newStatus: string) => {
@@ -399,7 +385,7 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
     setIsSubmittingComment(true)
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/bugtracker/errors/${id}/comments/`, {
+      const response = await fetch(`http://127.0.0.1:8000/bugtracker/comments/`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -407,7 +393,8 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
           'X-CSRFToken': csrfToken,
         },
         body: JSON.stringify({
-          text: comment
+          error: parseInt(id),
+          content: comment
         })
       })
 
@@ -488,6 +475,199 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
       })
     } finally {
       setIsSubmittingSolution(false)
+    }
+  }
+
+  const handleSolutionCommentSubmit = async (solutionId: number) => {
+    const commentText = solutionComments[solutionId]
+    if (!commentText?.trim() || !csrfToken) return
+
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/bugtracker/comments/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+          solution: solutionId,
+          content: commentText
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to submit comment')
+      }
+
+      const newComment = await response.json()
+      
+      // Update the solution's comments
+      setSolutions(solutions.map(solution => {
+        if (solution.id === solutionId) {
+          return {
+            ...solution,
+            comments: [...(solution.comments ?? []), newComment]
+          }
+        }
+        return solution
+      }))
+
+      // Clear the comment input
+      setSolutionComments({
+        ...solutionComments,
+        [solutionId]: ""
+      })
+
+      toast({
+        title: "Success",
+        description: "Comment added to solution",
+      })
+    } catch (error) {
+      console.error('Error submitting solution comment:', error)
+      toast({
+        title: "Error",
+        description: "Failed to add comment to solution",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleUpdateComment = async (commentId: number) => {
+    if (!editingCommentText.trim() || !csrfToken) return
+
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/bugtracker/comments/${commentId}/`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+          content: editingCommentText
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update comment')
+      }
+
+      // Update comments in state
+      setComments(comments.map(comment => 
+        comment.id === commentId ? { ...comment, content: editingCommentText } : comment
+      ));
+
+      // Also update in solutions if needed
+      setSolutions(solutions.map(solution => ({
+        ...solution,
+        comments: (solution.comments ?? []).map(comment => 
+          comment.id === commentId ? { ...comment, content: editingCommentText } : comment
+        )
+      })));
+
+      setEditingCommentId(null)
+      setEditingCommentText("")
+      
+      toast({
+        title: "Success",
+        description: "Comment updated successfully",
+      })
+    } catch (error) {
+      console.error('Error updating comment:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update comment",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleDeleteComment = async (commentId: number) => {
+    try {
+      if(!csrfToken) {
+        throw new Error("CSRF token not found")
+      }
+      const response = await fetch(`http://127.0.0.1:8000/bugtracker/comments/${commentId}/`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'X-CSRFToken': csrfToken,
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete comment')
+      }
+
+      // Remove from comments
+      setComments(comments.filter(comment => comment.id !== commentId))
+
+      // Also remove from solutions if needed
+      setSolutions(solutions.map(solution => ({
+        ...solution,
+        comments: (solution.comments ?? []).filter(comment => comment.id !== commentId)
+      })))
+
+      toast({
+        title: "Success",
+        description: "Comment deleted successfully",
+      })
+    } catch (error) {
+      console.error('Error deleting comment:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete comment",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleVote = async (solutionId: number, voteType: number) => {
+    try {
+      if(!csrfToken) {
+        throw new Error("CSRF token not found")
+      }
+      const response = await fetch(`http://127.0.0.1:8000/bugtracker/votes/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+          solution: solutionId,
+          vote_type: voteType
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to submit vote')
+      }
+
+      // Update the solution's votes
+      setSolutions(solutions.map(solution => {
+        if (solution.id === solutionId) {
+          return {
+            ...solution,
+            upvotes: voteType === 1 ? solution.upvotes + 1 : solution.upvotes,
+            downvotes: voteType === -1 ? solution.downvotes + 1 : solution.downvotes
+          }
+        }
+        return solution
+      }))
+
+      toast({
+        title: "Success",
+        description: `Your ${voteType === 1 ? 'upvote' : 'downvote'} has been recorded`,
+      })
+    } catch (error) {
+      console.error('Error submitting vote:', error)
+      toast({
+        title: "Error",
+        description: "Failed to submit vote",
+        variant: "destructive"
+      })
     }
   }
 
@@ -650,14 +830,14 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
                     ${
                       error.status === "open"
                         ? "border-amber-500 text-amber-500"
-                        : error.status === "in_progress"
+                        : error.status === "in progress"
                           ? "border-blue-500 text-blue-500"
                           : "border-green-500 text-green-500"
                     }
                   `}
                   >
                     {error.status === "open" && <Clock className="mr-1 h-3 w-3" />}
-                    {error.status === "in_progress" && <Clock className="mr-1 h-3 w-3" />}
+                    {error.status === "in progress" && <Clock className="mr-1 h-3 w-3" />}
                     {error.status === "resolved" && <CheckCircle2 className="mr-1 h-3 w-3" />}
                     {error.status?.replace('_', ' ') || ''}
                   </Badge>
@@ -692,9 +872,6 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
                   <TabsTrigger value="comments" className="rounded-lg">
                     Comments
                   </TabsTrigger>
-                  {/* <TabsTrigger value="activity" className="rounded-lg">
-                    Activity
-                  </TabsTrigger> */}
                 </TabsList>
 
                 <TabsContent value="details" className="space-y-6">
@@ -876,17 +1053,292 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
                   </div>
                 </TabsContent>
 
-                {/* Rest of the TabsContent components remain the same */}
                 <TabsContent value="solutions" className="space-y-6">
-                  {/* ... existing solutions tab content ... */}
+                  <div className="space-y-4">
+                    <form onSubmit={handleSolutionSubmit} className="space-y-4">
+                      <div>
+                        <Label htmlFor="solution-title">Title (optional)</Label>
+                        <Input
+                          id="solution-title"
+                          value={solutionTitle}
+                          onChange={(e) => setSolutionTitle(e.target.value)}
+                          placeholder="Solution title"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="solution-description">Solution</Label>
+                        <Textarea
+                          id="solution-description"
+                          value={solutionDescription}
+                          onChange={(e) => setSolutionDescription(e.target.value)}
+                          placeholder="Describe your solution..."
+                          className="min-h-[150px]"
+                          required
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="private-solution"
+                            checked={isPrivateSolution}
+                            onChange={(e) => setIsPrivateSolution(e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <Label htmlFor="private-solution">Private solution</Label>
+                        </div>
+                        <Button type="submit" disabled={isSubmittingSolution}>
+                          {isSubmittingSolution ? "Submitting..." : "Submit Solution"}
+                        </Button>
+                      </div>
+                    </form>
+
+                    <div className="space-y-4">
+                      {solutions.length === 0 ? (
+                        <div className="text-center py-8">
+                          <p className="text-muted-foreground">No solutions yet. Be the first to propose one!</p>
+                        </div>
+                      ) : (
+                        solutions.map((solution) => (
+                          <Card key={solution.id} className="border-border/40 shadow-sm">
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <CardTitle className="text-lg">{solution.title}</CardTitle>
+                                  <CardDescription>
+                                    Proposed by {solution.created_by} on {formatDate(solution.created_at)}
+                                  </CardDescription>
+                                </div>
+                                {solution.is_private && (
+                                  <Badge variant="outline">Private</Badge>
+                                )}
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="prose prose-sm max-w-none">
+                                <p>{solution.solution}</p>
+                              </div>
+
+                              <div className="flex items-center gap-4 mt-4">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => handleVote(solution.id, 1)}
+                                  className="flex items-center gap-1"
+                                >
+                                  <ThumbsUp className="h-4 w-4" />
+                                  <span>{solution.upvotes}</span>
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => handleVote(solution.id, -1)}
+                                  className="flex items-center gap-1"
+                                >
+                                  <ThumbsDown className="h-4 w-4" />
+                                  <span>{solution.downvotes}</span>
+                                </Button>
+                              </div>
+
+                              <div className="mt-6 space-y-4">
+                                <h4 className="text-sm font-medium">Comments ({solution.comments?.length || 0})</h4>
+                                <div className="space-y-4">
+                                  {(solution.comments ?? []).map((comment) => (
+                                    <div key={comment.id} className="flex gap-3">
+                                      <Avatar className="h-8 w-8">
+                                        <AvatarFallback>
+                                          {comment.created_by ? comment.created_by.substring(0, 2).toUpperCase() : "US"}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div className="flex-1">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-sm font-medium">{comment.created_by}</span>
+                                          <span className="text-xs text-muted-foreground">
+                                            {formatDate(comment.created_at)}
+                                          </span>
+                                        </div>
+                                        {editingCommentId === comment.id ? (
+                                          <div className="mt-1 space-y-2">
+                                            <Textarea
+                                              value={editingCommentText}
+                                              onChange={(e) => setEditingCommentText(e.target.value)}
+                                              className="min-h-[80px]"
+                                            />
+                                            <div className="flex gap-2">
+                                              <Button 
+                                                size="sm" 
+                                                onClick={() => handleUpdateComment(comment.id)}
+                                              >
+                                                Save
+                                              </Button>
+                                              <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={() => {
+                                                  setEditingCommentId(null)
+                                                  setEditingCommentText("")
+                                                }}
+                                              >
+                                                Cancel
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <>
+                                            <p className="text-sm mt-1">{comment.content}</p>
+                                            {comment.created_by === username && (
+                                              <div className="flex gap-2 mt-1">
+                                                <Button 
+                                                  variant="ghost" 
+                                                  size="sm" 
+                                                  onClick={() => {
+                                                    setEditingCommentId(comment.id)
+                                                    setEditingCommentText(comment.content)
+                                                  }}
+                                                >
+                                                  Edit
+                                                </Button>
+                                                <Button 
+                                                  variant="ghost" 
+                                                  size="sm" 
+                                                  onClick={() => handleDeleteComment(comment.id)}
+                                                  className="text-red-500"
+                                                >
+                                                  Delete
+                                                </Button>
+                                              </div>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="flex gap-2 mt-4">
+                                  <Input
+                                    value={solutionComments[solution.id] || ""}
+                                    onChange={(e) => setSolutionComments({
+                                      ...solutionComments,
+                                      [solution.id]: e.target.value
+                                    })}
+                                    placeholder="Add a comment..."
+                                    className="flex-1"
+                                  />
+                                  <Button 
+                                    onClick={() => handleSolutionCommentSubmit(solution.id)}
+                                    disabled={!solutionComments[solution.id]?.trim()}
+                                  >
+                                    Post
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="comments" className="space-y-6">
-                  {/* ... existing comments tab content ... */}
-                </TabsContent>
+                  <div className="space-y-4">
+                    <form onSubmit={handleCommentSubmit} className="space-y-4">
+                      <div>
+                        <Label htmlFor="comment">Add a comment</Label>
+                        <Textarea
+                          id="comment"
+                          value={comment}
+                          onChange={(e) => setComment(e.target.value)}
+                          placeholder="Share your thoughts..."
+                          className="min-h-[100px]"
+                        />
+                      </div>
+                      <div className="flex justify-end">
+                        <Button type="submit" disabled={isSubmittingComment || !comment.trim()}>
+                          {isSubmittingComment ? "Posting..." : "Post Comment"}
+                        </Button>
+                      </div>
+                    </form>
 
-                <TabsContent value="activity" className="space-y-6">
-                  {/* ... existing activity tab content ... */}
+                    <div className="space-y-4">
+                      {comments.length === 0 ? (
+                        <div className="text-center py-8">
+                          <p className="text-muted-foreground">No comments yet. Be the first to comment!</p>
+                        </div>
+                      ) : (
+                        comments.map((comment) => (
+                          <div key={comment.id} className="flex gap-3">
+                            <Avatar className="h-8 w-8">
+                                <AvatarFallback>
+                                  {comment.created_by ? comment.created_by.substring(0, 2).toUpperCase() : "US"}
+                                </AvatarFallback>
+                              </Avatar>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">{comment.created_by}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatDate(comment.created_at)}
+                                </span>
+                              </div>
+                              {editingCommentId === comment.id ? (
+                                <div className="mt-1 space-y-2">
+                                  <Textarea
+                                    value={editingCommentText}
+                                    onChange={(e) => setEditingCommentText(e.target.value)}
+                                    className="min-h-[80px]"
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button 
+                                      size="sm" 
+                                      onClick={() => handleUpdateComment(comment.id)}
+                                    >
+                                      Save
+                                    </Button>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      onClick={() => {
+                                        setEditingCommentId(null)
+                                        setEditingCommentText("")
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <p className="text-sm mt-1">{comment.content}</p>
+                                  {comment.created_by === username && (
+                                    <div className="flex gap-2 mt-1">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={() => {
+                                          setEditingCommentId(comment.id)
+                                          setEditingCommentText(comment.content)
+                                        }}
+                                      >
+                                        Edit
+                                      </Button>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={() => handleDeleteComment(comment.id)}
+                                        className="text-red-500"
+                                      >
+                                        Delete
+                                      </Button>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </TabsContent>
               </Tabs>
             </CardContent>
@@ -911,7 +1363,7 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="in progress">In Progress</SelectItem>
                     <SelectItem value="resolved">Resolved</SelectItem>
                   </SelectContent>
                 </Select>

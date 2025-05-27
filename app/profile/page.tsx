@@ -36,6 +36,13 @@ export default function ProfilePage() {
     },
   })
 
+  const [errorStats, setErrorStats] = useState({
+    total: 0,
+    resolved: 0,
+    pending: 0,
+    critical: 0
+  })
+
   type RecentActivity = {
     id: string
     type: string
@@ -83,11 +90,33 @@ export default function ProfilePage() {
 
         const profileData = await profileResponse.json()
         
+        // Fetch error stats
+        const statsResponse = await fetch("http://127.0.0.1:8000/bugtracker/errors/report/", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrftoken,
+          },
+        })
+
+        if (!statsResponse.ok) {
+          throw new Error("Failed to fetch error stats")
+        }
+
+        const statsData = await statsResponse.json()
+        setErrorStats({
+          total: statsData.total || 0,
+          resolved: statsData.resolved || 0,
+          pending: statsData.pending || 0,
+          critical: statsData.critical || 0
+        })
+
         // Format the data to match our UI structure
         setUser({
           name: `${profileData.first_name} ${profileData.last_name}`,
           username: profileData.username,
-          avatar: profileData.profile_picture || "/placeholder.svg",
+          avatar: "http://127.0.0.1:8000/"+profileData.profile_picture || "/placeholder.svg",
           initials: `${profileData.first_name.charAt(0)}${profileData.last_name.charAt(0)}`,
           bio: profileData.bio || "",
           jobTitle: profileData.jobtitle || "",
@@ -288,12 +317,20 @@ export default function ProfilePage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1 text-center">
-                  <p className="text-2xl font-bold">{user.stats.errorsReported}</p>
-                  <p className="text-xs text-muted-foreground">Errors Reported</p>
+                  <p className="text-2xl font-bold">{errorStats.total}</p>
+                  <p className="text-xs text-muted-foreground">Total Errors</p>
                 </div>
                 <div className="space-y-1 text-center">
-                  <p className="text-2xl font-bold">{user.stats.errorsSolved}</p>
-                  <p className="text-xs text-muted-foreground">Errors Solved</p>
+                  <p className="text-2xl font-bold">{errorStats.resolved}</p>
+                  <p className="text-xs text-muted-foreground">Resolved</p>
+                </div>
+                <div className="space-y-1 text-center">
+                  <p className="text-2xl font-bold">{errorStats.pending}</p>
+                  <p className="text-xs text-muted-foreground">Pending</p>
+                </div>
+                <div className="space-y-1 text-center">
+                  <p className="text-2xl font-bold">{errorStats.critical}</p>
+                  <p className="text-xs text-muted-foreground">Critical</p>
                 </div>
                 <div className="space-y-1 text-center">
                   <p className="text-2xl font-bold">{user.stats.solutionsSubmitted}</p>
@@ -305,16 +342,16 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {user.stats.errorsReported > 0 && (
+              {errorStats.total > 0 && (
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Resolution Rate</span>
                     <span className="font-medium">
-                      {Math.round((user.stats.errorsSolved / user.stats.errorsReported) * 100)}%
+                      {Math.round((errorStats.resolved / errorStats.total) * 100)}%
                     </span>
                   </div>
                   <Progress
-                    value={Math.round((user.stats.errorsSolved / user.stats.errorsReported) * 100)}
+                    value={Math.round((errorStats.resolved / errorStats.total) * 100)}
                     className="h-2"
                   />
                 </div>

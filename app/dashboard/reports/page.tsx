@@ -107,10 +107,10 @@ export default function ReportsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="7days">Last 7 days</SelectItem>
-              <SelectItem value="30days">Last 30 days</SelectItem>
+              {/* <SelectItem value="30days">Last 30 days</SelectItem>
               <SelectItem value="90days">Last 90 days</SelectItem>
               <SelectItem value="year">Last year</SelectItem>
-              <SelectItem value="custom">Custom range</SelectItem>
+              <SelectItem value="custom">Custom range</SelectItem> */}
             </SelectContent>
           </Select>
 
