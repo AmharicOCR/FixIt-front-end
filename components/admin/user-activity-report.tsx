@@ -2,79 +2,106 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
 
-const activityData = [
-  {
-    name: "Jan",
-    errors: 65,
-    solutions: 48,
-    comments: 92,
-  },
-  {
-    name: "Feb",
-    errors: 78,
-    solutions: 52,
-    comments: 105,
-  },
-  {
-    name: "Mar",
-    errors: 82,
-    solutions: 60,
-    comments: 120,
-  },
-  {
-    name: "Apr",
-    errors: 70,
-    solutions: 65,
-    comments: 110,
-  },
-  {
-    name: "May",
-    errors: 85,
-    solutions: 75,
-    comments: 125,
-  },
-]
+interface UserActivityReportProps {
+  date?: Date;
+  activityData?: {
+    name: string;
+    errors?: number;
+    solutions?: number;
+    comments?: number;
+  }[];
+  growthData?: {
+    name: string;
+    free?: number;
+    premium?: number;
+  }[];
+  loading?: boolean;
+  error?: boolean;
+}
 
-const userGrowthData = [
-  {
-    name: "Jan",
-    free: 120,
-    premium: 45,
-  },
-  {
-    name: "Feb",
-    free: 150,
-    premium: 60,
-  },
-  {
-    name: "Mar",
-    free: 190,
-    premium: 75,
-  },
-  {
-    name: "Apr",
-    free: 220,
-    premium: 90,
-  },
-  {
-    name: "May",
-    free: 280,
-    premium: 110,
-  },
-]
+export function UserActivityReport({ date, activityData, growthData, loading, error }: UserActivityReportProps) {
+  if (loading) {
+    return <div className="flex items-center justify-center h-64">Loading...</div>;
+  }
 
-export function UserActivityReport() {
+  if (error) {
+    return <div className="flex items-center justify-center h-64 text-red-500">Error loading data</div>;
+  }
+
+  const filteredActivityData = activityData || [
+    {
+      name: "Jan",
+      errors: 65,
+      solutions: 48,
+      comments: 92,
+    },
+    {
+      name: "Feb",
+      errors: 78,
+      solutions: 52,
+      comments: 105,
+    },
+    {
+      name: "Mar",
+      errors: 82,
+      solutions: 60,
+      comments: 120,
+    },
+    {
+      name: "Apr",
+      errors: 70,
+      solutions: 65,
+      comments: 110,
+    },
+    {
+      name: "May",
+      errors: 85,
+      solutions: 75,
+      comments: 125,
+    },
+  ]
+
+  const filteredUserGrowthData = growthData || [
+    {
+      name: "Jan",
+      free: 120,
+      premium: 45,
+    },
+    {
+      name: "Feb",
+      free: 150,
+      premium: 60,
+    },
+    {
+      name: "Mar",
+      free: 190,
+      premium: 75,
+    },
+    {
+      name: "Apr",
+      free: 220,
+      premium: 90,
+    },
+    {
+      name: "May",
+      free: 280,
+      premium: 110,
+    },
+  ]
+
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <Card>
         <CardHeader>
           <CardTitle>User Activity</CardTitle>
-          <CardDescription>Monthly activity breakdown by type</CardDescription>
+          <CardDescription>
+            {date ? `Activity up to ${date.toLocaleDateString('default', { month: 'long', year: 'numeric' })}` : 'Monthly activity breakdown by type'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={350}>
             <BarChart
-              data={activityData}
+              data={filteredActivityData}
               margin={{
                 top: 5,
                 right: 30,
@@ -119,12 +146,14 @@ export function UserActivityReport() {
       <Card>
         <CardHeader>
           <CardTitle>User Growth</CardTitle>
-          <CardDescription>Monthly new user registrations</CardDescription>
+          <CardDescription>
+            {date ? `New users up to ${date.toLocaleDateString('default', { month: 'long', year: 'numeric' })}` : 'Monthly new user registrations'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={350}>
             <BarChart
-              data={userGrowthData}
+              data={filteredUserGrowthData}
               margin={{
                 top: 5,
                 right: 30,

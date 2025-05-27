@@ -2,33 +2,68 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 
-const languageData = [
-  { name: "JavaScript", value: 40 },
-  { name: "Python", value: 25 },
-  { name: "Java", value: 15 },
-  { name: "C#", value: 10 },
-  { name: "PHP", value: 5 },
-  { name: "TypeScript", value: 5 },
-]
-
-const frameworkData = [
-  { name: "React", value: 35 },
-  { name: "Angular", value: 20 },
-  { name: "Django", value: 15 },
-  { name: "Spring", value: 10 },
-  { name: "Laravel", value: 10 },
-  { name: "Vue", value: 10 },
-]
+interface ErrorCategoryReportProps {
+  date?: Date;
+  data?: {
+    name: string;
+    errors: number;
+    percentage: string;
+  }[];
+  loading?: boolean;
+  error?: boolean;
+}
 
 const COLORS = ["#3b82f6", "#f43f5e", "#10b981", "#f59e0b", "#a855f7", "#64748b"]
 
-export function ErrorCategoryReport() {
+const getFilteredData = (date: Date | undefined, baseData: {name: string, value: number}[]) => {
+  if (!date) return baseData;
+  
+  const monthIndex = date.getMonth();
+  const multiplier = (monthIndex + 1) / 12;
+  return baseData.map(item => ({
+    ...item,
+    value: Math.round(item.value * multiplier)
+  }));
+}
+
+export function ErrorCategoryReport({ date, data, loading, error }: ErrorCategoryReportProps) {
+  if (loading) {
+    return <div className="flex items-center justify-center h-64">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="flex items-center justify-center h-64 text-red-500">Error loading data</div>;
+  }
+
+  const languageData = data ? data.map(item => ({
+    name: item.name,
+    value: item.errors
+  })) : getFilteredData(date, [
+    { name: "JavaScript", value: 40 },
+    { name: "Python", value: 25 },
+    { name: "Java", value: 15 },
+    { name: "C#", value: 10 },
+    { name: "PHP", value: 5 },
+    { name: "TypeScript", value: 5 },
+  ]);
+
+  const frameworkData = getFilteredData(date, [
+    { name: "React", value: 35 },
+    { name: "Angular", value: 20 },
+    { name: "Django", value: 15 },
+    { name: "Spring", value: 10 },
+    { name: "Laravel", value: 10 },
+    { name: "Vue", value: 10 },
+  ]);
+
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <Card>
         <CardHeader>
           <CardTitle>Errors by Language</CardTitle>
-          <CardDescription>Distribution of errors by programming language</CardDescription>
+          <CardDescription>
+            {date ? `Language distribution up to ${date.toLocaleDateString('default', { month: 'long', year: 'numeric' })}` : 'Distribution of errors by programming language'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={350}>
@@ -61,7 +96,16 @@ export function ErrorCategoryReport() {
                             <span className="text-sm font-bold">{payload[0].name}</span>
                           </div>
                           <div className="text-sm">
-                            {payload[0].value} errors ({((payload[0].value / 100) * 100).toFixed(0)}%)
+                            {typeof payload[0]?.value === "number"
+                              ? `${payload[0].value} errors (${(
+                                  (payload[0].value /
+                                    languageData.reduce(
+                                      (sum, item) => sum + item.value,
+                                      0
+                                    )) *
+                                  100
+                                ).toFixed(0)}%)`
+                              : "N/A"}
                           </div>
                         </div>
                       </div>
@@ -78,7 +122,9 @@ export function ErrorCategoryReport() {
       <Card>
         <CardHeader>
           <CardTitle>Errors by Framework</CardTitle>
-          <CardDescription>Distribution of errors by framework</CardDescription>
+          <CardDescription>
+            {date ? `Framework distribution up to ${date.toLocaleDateString('default', { month: 'long', year: 'numeric' })}` : 'Distribution of errors by framework'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={350}>
@@ -111,7 +157,16 @@ export function ErrorCategoryReport() {
                             <span className="text-sm font-bold">{payload[0].name}</span>
                           </div>
                           <div className="text-sm">
-                            {payload[0].value} errors ({((payload[0].value / 100) * 100).toFixed(0)}%)
+                            {typeof payload[0]?.value === "number"
+                              ? `${payload[0].value} errors (${(
+                                  (payload[0].value /
+                                    frameworkData.reduce(
+                                      (sum, item) => sum + item.value,
+                                      0
+                                    )) *
+                                  100
+                                ).toFixed(0)}%)`
+                              : "N/A"}
                           </div>
                         </div>
                       </div>

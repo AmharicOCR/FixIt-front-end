@@ -13,7 +13,7 @@ import { Save } from "lucide-react"
 
 export default function SettingsPage() {
   const [emailTemplates, setEmailTemplates] = useState({
-    welcome: "Welcome to Code Error Repository, {{user}}! We're excited to have you join our community.",
+    welcome: "Welcome to fix it, {{user}}! We're excited to have you join our community.",
     verification: "Please verify your email by clicking this link: {{verification_link}}",
     passwordReset: "You requested a password reset. Click here to reset your password: {{reset_link}}",
     errorNotification: "A new error has been submitted: {{error}}",
@@ -50,7 +50,7 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="site-name">Site Name</Label>
-                <Input id="site-name" defaultValue="Code Error Repository" />
+                <Input id="site-name" defaultValue="Fix it" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="site-description">Site Description</Label>

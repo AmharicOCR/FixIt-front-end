@@ -13,79 +13,118 @@ import {
   Legend,
 } from "recharts"
 
-const usageData = [
-  {
-    name: "Jan",
-    users: 1200,
-    errors: 450,
-    solutions: 380,
-  },
-  {
-    name: "Feb",
-    users: 1500,
-    errors: 520,
-    solutions: 450,
-  },
-  {
-    name: "Mar",
-    users: 1800,
-    errors: 600,
-    solutions: 520,
-  },
-  {
-    name: "Apr",
-    users: 2100,
-    errors: 700,
-    solutions: 620,
-  },
-  {
-    name: "May",
-    users: 2500,
-    errors: 850,
-    solutions: 750,
-  },
-]
+interface PlatformUsageReportProps {
+  date?: Date;
+  data?: {
+    name: string;
+    users?: number;
+    solutions?: number;
+    errors?: number;
+    comments?: number;
+    free?: number;
+    premium?: number;
+  }[];
+  loading?: boolean;
+  error?: boolean;
+}
 
-const engagementData = [
-  {
-    name: "Jan",
-    viewsPerUser: 12,
-    solutionsPerError: 0.8,
-  },
-  {
-    name: "Feb",
-    viewsPerUser: 14,
-    solutionsPerError: 0.85,
-  },
-  {
-    name: "Mar",
-    viewsPerUser: 15,
-    solutionsPerError: 0.87,
-  },
-  {
-    name: "Apr",
-    viewsPerUser: 18,
-    solutionsPerError: 0.9,
-  },
-  {
-    name: "May",
-    viewsPerUser: 20,
-    solutionsPerError: 0.92,
-  },
-]
+export function PlatformUsageReport({ date, data, loading, error }: PlatformUsageReportProps) {
+  if (loading) {
+    return <div className="flex items-center justify-center h-64">Loading...</div>;
+  }
 
-export function PlatformUsageReport() {
+  if (error) {
+    return <div className="flex items-center justify-center h-64 text-red-500">Error loading data</div>;
+  }
+
+  const usageData = data || [
+    {
+      name: "Jan",
+      users: 1200,
+      errors: 450,
+      solutions: 380,
+    },
+    {
+      name: "Feb",
+      users: 1500,
+      errors: 520,
+      solutions: 450,
+    },
+    {
+      name: "Mar",
+      users: 1800,
+      errors: 600,
+      solutions: 520,
+    },
+    {
+      name: "Apr",
+      users: 2100,
+      errors: 700,
+      solutions: 620,
+    },
+    {
+      name: "May",
+      users: 2500,
+      errors: 850,
+      solutions: 750,
+    },
+  ]
+
+  const engagementData = [
+    {
+      name: "Jan",
+      viewsPerUser: 12,
+      solutionsPerError: 0.8,
+    },
+    {
+      name: "Feb",
+      viewsPerUser: 14,
+      solutionsPerError: 0.85,
+    },
+    {
+      name: "Mar",
+      viewsPerUser: 15,
+      solutionsPerError: 0.87,
+    },
+    {
+      name: "Apr",
+      viewsPerUser: 18,
+      solutionsPerError: 0.9,
+    },
+    {
+      name: "May",
+      viewsPerUser: 20,
+      solutionsPerError: 0.92,
+    },
+  ]
+
+  const filteredUsageData = date 
+    ? usageData.filter(item => {
+        const itemDate = new Date(`${item.name} 1, 2023`);
+        return itemDate <= (date || new Date());
+      })
+    : usageData;
+
+  const filteredEngagementData = date 
+    ? engagementData.filter(item => {
+        const itemDate = new Date(`${item.name} 1, 2023`);
+        return itemDate <= (date || new Date());
+      })
+    : engagementData;
+
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <Card>
         <CardHeader>
           <CardTitle>Platform Growth</CardTitle>
-          <CardDescription>Monthly growth in users, errors, and solutions</CardDescription>
+          <CardDescription>
+            {date ? `Growth data up to ${date.toLocaleDateString('default', { month: 'long', year: 'numeric' })}` : 'Monthly growth in users, errors, and solutions'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={350}>
             <AreaChart
-              data={usageData}
+              data={filteredUsageData}
               margin={{
                 top: 5,
                 right: 30,
@@ -137,12 +176,14 @@ export function PlatformUsageReport() {
       <Card>
         <CardHeader>
           <CardTitle>User Engagement</CardTitle>
-          <CardDescription>Monthly engagement metrics</CardDescription>
+          <CardDescription>
+            {date ? `Engagement metrics up to ${date.toLocaleDateString('default', { month: 'long', year: 'numeric' })}` : 'Monthly engagement metrics'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={350}>
             <BarChart
-              data={engagementData}
+              data={filteredEngagementData}
               margin={{
                 top: 5,
                 right: 30,
