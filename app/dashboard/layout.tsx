@@ -72,25 +72,36 @@ export default function DashboardLayout({
   // });
   const csrftoken = getCookie("csrftoken");
 
-async function fetchProfile() {
-  const profileResponse = await fetch("http://127.0.0.1:8000/user/profile/", {
-    method: "GET",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": csrftoken ?? "",
-    },
-  });
-  console.log(profileResponse.body);
-}
-fetchProfile();
-  const user = {
-    accountType: accountType,
-    name: username,
-    email: email ? email.substring(0, 2) : "",
-    initials: username,
-    avatarUrl: "/placeholder.svg",
-  };
+const [userData, setUserData] = useState<any>(null);
+
+useEffect(() => {
+  async function fetchProfile() {
+    try {
+      const profileResponse = await fetch("http://127.0.0.1:8000/user/profile/", {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken ?? "",
+        },
+      });
+      const data = await profileResponse.json();
+      setUserData(data);
+    } catch (error) {
+      setUserData(null);
+    }
+  }
+  fetchProfile();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
+const user = {
+  accountType: accountType,
+  name: userData?.first_name || userData?.username ,
+  email: email ? email : userData?.email || "No email provided",
+  initials: username,
+  avatarUrl: "http://127.0.0.1:8000"+userData?.profile_picture || "/placeholder.svg",
+};
 
   useEffect(() => {
     setMounted(true);
@@ -281,7 +292,7 @@ fetchProfile();
                 >
                   My Errors
                 </NavItem>
-                {!loading && authenticated && accountType === "premium" && (
+                { authenticated && accountType === "Premium" && (
                   <NavItem
                     href="/dashboard/teams"
                     icon={Users}
@@ -365,7 +376,7 @@ fetchProfile();
                   >
                     My Errors
                   </NavItem>
-                  {!loading && authenticated && accountType === "premium" && (
+                  { authenticated && accountType === "Premium" && (
                     <NavItem
                       href="/dashboard/teams"
                       icon={Users}
@@ -479,15 +490,15 @@ fetchProfile();
                       className="rounded-full"
                     >
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src="/placeholder.svg" alt="User" />
-                        <AvatarFallback>JD</AvatarFallback>
+                        <AvatarImage src={"http://127.0.0.1:8000"+user.avatarUrl} alt="User" />
+                        <AvatarFallback>{user.initials ? user.initials.substring(0, 1) : "U"}</AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>John Doe</DropdownMenuLabel>
+                    <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
                     <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">
-                      john.doe@example.com
+                      {user.email}
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
