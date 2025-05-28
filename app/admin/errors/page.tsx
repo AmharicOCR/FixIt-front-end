@@ -230,7 +230,7 @@ export default function MyErrorsPage() {
                         </div>
                         <div>
                           <Link
-                            href={`/dashboard/error-details/${error.id}`}
+                            href={`/error-details/${error.id}`}
                             className="font-medium text-sm hover:underline"
                           >
                             {error.title}
@@ -307,7 +307,7 @@ export default function MyErrorsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/error-details/${error.id}`}>
+                            <Link href={`/error-details/${error.id}`}>
                               View details
                             </Link>
                           </DropdownMenuItem>

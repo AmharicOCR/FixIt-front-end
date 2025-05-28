@@ -47,11 +47,11 @@ export function Sidebar({ className }: SidebarProps) {
       href: "/admin/errors",
       icon: <AlertTriangle className="h-5 w-5" />,
     },
-    {
-      title: "Solutions",
-      href: "/admin/solutions",
-      icon: <CheckCircle className="h-5 w-5" />,
-    },
+    // {
+    //   title: "Solutions",
+    //   href: "/admin/solutions",
+    //   icon: <CheckCircle className="h-5 w-5" />,
+    // },
     {
       title: "Reports",
       href: "/admin/reports",

@@ -484,7 +484,7 @@ export default function PublicErrorsPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem asChild>
-                                    <Link href={`/dashboard/error-details${result.id}`}>View details</Link>
+                                    <Link href={`/dashboard/error-details/${result.id}`}>View details</Link>
                                   </DropdownMenuItem>
                                   
                                 </DropdownMenuContent>
