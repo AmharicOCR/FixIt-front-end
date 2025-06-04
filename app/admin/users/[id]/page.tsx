@@ -140,6 +140,8 @@ export default function UserDetailsPage() {
         title: "User updated",
         description: `User role changed to ${userData.role} and status to ${userData.is_active ? 'active' : 'inactive'}`,
       })
+
+      window.location.href = `/admin/users/${id}` 
     } catch (err) {
       toast({
         title: "Error updating user",

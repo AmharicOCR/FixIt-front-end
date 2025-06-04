@@ -156,6 +156,7 @@ export default function TeamsPage() {
       const newTeam = await response.json()
       
       showToast(`Team "${newTeamName}" created successfully`, 'success')
+      window.location.href =' /dashboard/teams/'
 
       // Add the new team to the state
       const teamWithStats = {

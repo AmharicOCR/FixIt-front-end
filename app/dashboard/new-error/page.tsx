@@ -844,7 +844,7 @@ export default function NewErrorPage() {
                       onValueChange={(value) => handleSelectChange("assigned_to", value)}
                     >
                       <SelectTrigger id="assigned_to">
-                        <SelectValue placeholder="Select team member" />
+                        <SelectValue placeholder="Select team " />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="unassigned">Unassigned</SelectItem>

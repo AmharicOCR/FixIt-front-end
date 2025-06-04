@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type React from "react"
 import { useState, useEffect, use } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Link from "next/link"
 import { ArrowLeft, Bug, CheckCircle2, Clock, MessageSquare, MoreHorizontal, Share2, ThumbsUp, ThumbsDown, Trash2, Edit, Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -132,6 +133,9 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
   const [editingCommentText, setEditingCommentText] = useState("")
   const [isMyError, setisMyError] = useState(false)
+  const [isAIDialogOpen, setIsAIDialogOpen] = useState(false)
+  const [aiResponse, setAiResponse] = useState("")
+  const [isAILoading, setIsAILoading] = useState(false)
 
   // Fetch data on mount
   useEffect(() => {
@@ -194,8 +198,6 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
       }
     }
 
-    
-
     const fetchMyerrors= async()=>{
        const response = await fetch("http://127.0.0.1:8000/bugtracker/my-errors/", {
           method: "GET",
@@ -216,6 +218,106 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
       fetchData()
     }
   }, [id, csrfToken, toast, authenticated])
+
+  const fetchComments = async () => {
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/bugtracker/errors/${id}/`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'X-CSRFToken': csrfToken ?? "",
+        }
+      });
+      const data = await response.json();
+      setComments(data.error_comments || []);
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    }
+  };
+
+  const fetchSolutions = async () => {
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/bugtracker/errors/${id}/`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'X-CSRFToken': csrfToken ?? "",
+        }
+      });
+      const data = await response.json();
+      setSolutions(data.solutions || []);
+    } catch (error) {
+      console.error('Error fetching solutions:', error);
+    }
+  };
+
+  const handleSolveWithAI = async () => {
+    if (!error) {
+      toast({
+        title: "Error",
+        description: "Error details are not loaded yet.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsAILoading(true);
+    setIsAIDialogOpen(true);
+    setAiResponse("");
+
+    try {
+      const prompt = `
+        I'm encountering this error in my ${error.language || 'application'}:
+        Error: ${error.error_message}
+        
+        Stack Trace:
+        ${error.stack_trace}
+        
+        Description:
+        ${error.description}
+        
+        Steps to Reproduce:
+        ${error.steps_to_reproduce}
+        
+        Expected Behavior:
+        ${error.expected_behaviour}
+        
+        Actual Behavior:
+        ${error.actual_behaviour}
+        
+        Environment: ${error.environment}
+        Category: ${error.category}
+        Tags: ${error.tags?.join(', ') || 'none'}
+        
+        Please provide a detailed solution to fix this error, including:
+        1. The likely cause of the error
+        2. Step-by-step instructions to resolve it
+        3. Any preventive measures for the future
+      `
+      const response = await fetch('/api/deepseek', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "API request failed");
+      }
+
+      const data = await response.json();
+      setAiResponse(data.choices[0].message.content);
+    } catch (error: any) {
+      console.error("Error fetching AI solution:", error);
+      setAiResponse(`Failed to get AI solution: ${error.message}`);
+      toast({
+        title: "API Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsAILoading(false);
+    }
+  };
 
   const handleShare = async () => {
     try {
@@ -431,8 +533,7 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
         throw new Error('Failed to submit comment')
       }
 
-      const newComment = await response.json()
-      setComments([...comments, newComment])
+      await fetchComments()
       setComment("")
       toast({
         title: "Success",
@@ -485,8 +586,7 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
         throw new Error(errorData.message || 'Failed to submit solution')
       }
 
-      const newSolution = await response.json()
-      setSolutions([...solutions, newSolution])
+      await fetchSolutions()
       setSolutionTitle("")
       setSolutionDescription("")
       setIsPrivateSolution(false)
@@ -529,19 +629,8 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
         throw new Error('Failed to submit comment')
       }
 
-      const newComment = await response.json()
+      await fetchSolutions()
       
-      // Update the solution's comments
-      setSolutions(solutions.map(solution => {
-        if (solution.id === solutionId) {
-          return {
-            ...solution,
-            comments: [...(solution.comments ?? []), newComment]
-          }
-        }
-        return solution
-      }))
-
       // Clear the comment input
       setSolutionComments({
         ...solutionComments,
@@ -582,18 +671,8 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
         throw new Error('Failed to update comment')
       }
 
-      // Update comments in state
-      setComments(comments.map(comment => 
-        comment.id === commentId ? { ...comment, content: editingCommentText } : comment
-      ));
-
-      // Also update in solutions if needed
-      setSolutions(solutions.map(solution => ({
-        ...solution,
-        comments: (solution.comments ?? []).map(comment => 
-          comment.id === commentId ? { ...comment, content: editingCommentText } : comment
-        )
-      })));
+      await fetchComments()
+      await fetchSolutions()
 
       setEditingCommentId(null)
       setEditingCommentText("")
@@ -629,14 +708,8 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
         throw new Error('Failed to delete comment')
       }
 
-      // Remove from comments
-      setComments(comments.filter(comment => comment.id !== commentId))
-
-      // Also remove from solutions if needed
-      setSolutions(solutions.map(solution => ({
-        ...solution,
-        comments: (solution.comments ?? []).filter(comment => comment.id !== commentId)
-      })))
+      await fetchComments()
+      await fetchSolutions()
 
       toast({
         title: "Success",
@@ -674,17 +747,7 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
         throw new Error('Failed to submit vote')
       }
 
-      // Update the solution's votes
-      setSolutions(solutions.map(solution => {
-        if (solution.id === solutionId) {
-          return {
-            ...solution,
-            upvotes: voteType === 1 ? solution.upvotes + 1 : solution.upvotes,
-            downvotes: voteType === -1 ? solution.downvotes + 1 : solution.downvotes
-          }
-        }
-        return solution
-      }))
+      await fetchSolutions()
 
       toast({
         title: "Success",
@@ -714,9 +777,8 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
   if (!authenticated) {
     return (
       <div className="flex items-center justify-center h-screen">
-  <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-</div>
-
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
     )
   }
 
@@ -730,6 +792,74 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
     )
   }
   
+  const renderAIResponse = () => {
+    if (!aiResponse) return null;
+    
+    // Split the response into sections
+    const sections = aiResponse.split(/\n\n+/);
+    
+    return (
+      <div className="space-y-4">
+        {sections.map((section, index) => {
+          // Check for headings (lines that end with :)
+          if (section.match(/^[A-Za-z\s]+:$/)) {
+            return (
+              <div key={index} className="space-y-2">
+                <h3 className="text-lg font-semibold text-primary">
+                  {section.replace(':', '')}
+                </h3>
+              </div>
+            );
+          }
+          
+          // Check for numbered lists
+          if (section.match(/^\d+\.\s/)) {
+            const items = section.split('\n');
+            return (
+              <ol key={index} className="list-decimal pl-5 space-y-2">
+                {items.map((item, i) => (
+                  <li key={i} className="text-sm">
+                    {item.replace(/^\d+\.\s/, '')}
+                  </li>
+                ))}
+              </ol>
+            );
+          }
+          
+          // Check for bullet points
+          if (section.match(/^-\s/)) {
+            const items = section.split('\n');
+            return (
+              <ul key={index} className="list-disc pl-5 space-y-2">
+                {items.map((item, i) => (
+                  <li key={i} className="text-sm">
+                    {item.replace(/^-\s/, '')}
+                  </li>
+                ))}
+              </ul>
+            );
+          }
+          
+          // Check for code blocks
+          if (section.match(/```([a-z]*)/)) {
+            const code = section.replace(/```[a-z]*/, '').replace(/```/, '');
+            return (
+              <pre key={index} className="bg-gray-800 text-gray-100 p-4 rounded-md overflow-x-auto text-sm">
+                <code>{code}</code>
+              </pre>
+            );
+          }
+          
+          // Default paragraph
+          return (
+            <p key={index} className="text-sm">
+              {section}
+            </p>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -795,10 +925,26 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
             </>
           ) : (
             <>
-              <Button variant="outline" size="sm" className="rounded-lg" onClick={handleShare}>
-                <Share2 className="mr-2 h-4 w-4" />
-                Share
-              </Button>
+              {isMyError && ( <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleSolveWithAI}
+                    className="rounded-lg gap-1"
+                  >
+                    <Bug className="h-4 w-4" />
+                    Solve with AI
+                  </Button>)
+                  }
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleShare}
+                    className="rounded-lg gap-1"
+                  >
+                    <Share2 className="h-4 w-4" />
+                    Share
+                  </Button>
+              
               {isMyError && (
                 <Button
                   variant="outline"
@@ -890,7 +1036,7 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
               </div>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="details" className="space-y-4" onValueChange={setActiveTab}>
+              <Tabs defaultValue="details" className="space-y-4" onValueChange={setActiveTab} value={activeTab}>
                 <TabsList className="grid w-full grid-cols-4 rounded-lg">
                   <TabsTrigger value="details" className="rounded-lg">
                     Details
@@ -1452,6 +1598,60 @@ export default function ErrorDetailsPage({ params }: { params: Promise<{ id: str
           </Card>
         </div>
       </div>
+      {/* AI Solution Dialog */}
+      <Dialog open={isAIDialogOpen} onOpenChange={setIsAIDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>AI-Powered Solution</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {isAILoading ? (
+              <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                <div className="relative">
+                  <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Bug className="h-6 w-6 text-blue-500 animate-pulse" />
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">Analyzing your error and generating solution...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 p-4 rounded-lg">
+                  {renderAIResponse()}
+                </div>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button 
+                    onClick={() => {
+                      setIsAIDialogOpen(false)
+                      navigator.clipboard.writeText(aiResponse)
+                      toast({
+                        title: "Copied!",
+                        description: "AI solution copied to clipboard",
+                      })
+                    }}
+                    variant="outline"
+                    disabled={isAILoading}
+                  >
+                    Copy Solution
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setSolutionDescription(aiResponse)
+                      setSolutionTitle(`AI Suggested Solution for ${error.title}`)
+                      setIsAIDialogOpen(false)
+                      setActiveTab("solutions")
+                    }}
+                    disabled={isAILoading}
+                  >
+                    Use as Solution
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

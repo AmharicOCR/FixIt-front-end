@@ -39,7 +39,7 @@ export default function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(loginData),
-        credentials: 'include' // Include cookies if using session-based auth
+        credentials: 'include'
       })
 
       const data = await response.json()

@@ -96,6 +96,7 @@ export default function TeamSettingsPage({ params }: { params: { id: string } })
       }
 
       const data = await response.json()
+      console.log("Fetched team data:", data) // Debugging line
       setTeam(data)
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Failed to load team", 'error')
@@ -127,7 +128,7 @@ export default function TeamSettingsPage({ params }: { params: { id: string } })
         body: JSON.stringify({
           name: team.name,
           description: team.description,
-          team_members: team.team_members.map(member => member.name) // Using name as email placeholder
+          members: team.team_members.map(member => member.name) // Using name as email placeholder
         })
       })
 
@@ -169,19 +170,28 @@ export default function TeamSettingsPage({ params }: { params: { id: string } })
         body: JSON.stringify({
           name: team.name,
           description: team.description,
-          team_members: updatedMembers.map(member => member.name)
+          members: updatedMembers.map(member => member.name)
         })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to add member')
+        
+        const errorData = await response.json()
+        console.log("Error data:", errorData)
+        throw new Error(errorData.members[0] || 'Failed to add member')
       }
+
 
       showToast(`Member ${inviteEmail} added successfully`, 'success')
       setShowInviteDialog(false)
       setInviteEmail("")
       fetchTeam() // Refetch data
     } catch (error) {
+      if (error instanceof Error) {
+        console.log("Error adding member:ss", error.message)
+      } else {
+        console.log("Error adding member:", error)
+      }
       showToast(error instanceof Error ? error.message : "Failed to add member", 'error')
     }
   }
@@ -231,7 +241,7 @@ export default function TeamSettingsPage({ params }: { params: { id: string } })
         body: JSON.stringify({
           name: team.name,
           description: team.description,
-          team_members: updatedMembers.map(member => member.name)
+          members: updatedMembers.map(member => member.name)
         })
       })
 
