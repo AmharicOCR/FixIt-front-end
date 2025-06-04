@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useEffect, useState } from "react"
 import { getCookie } from "@/utils/cookies"
+import RouteGuard from "@/components/RouteGuard"
 
 interface PlatformStats {
   total_users: number
@@ -117,79 +118,82 @@ export default function AdminDashboard() {
   }, [])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+    <RouteGuard>
+        <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        </div>
+
+        <DashboardStats 
+          stats={platformStats} 
+          loading={loading.stats} 
+          error={error.stats} 
+        />
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Error Distribution</CardTitle>
+              <CardDescription>Distribution of errors by programming language and framework</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {error.errors ? (
+                <div className="text-center py-8 text-red-500">
+                  Failed to load error distribution data
+                </div>
+              ) : loading.errors ? (
+                <div className="text-center py-8 text-gray-500">
+                  Loading error distribution...
+                </div>
+              ) : (
+                <ErrorDistributionChart 
+                  data={errorDistribution} 
+                  height={300}
+                  margin={{ top: 20, right: 30, left: 40, bottom: 40 }}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Resolution Time</CardTitle>
+              <CardDescription>Average time to resolve errors by category</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {error.resolution ? (
+                <div className="text-center py-8 text-red-500">
+                  Failed to load resolution time data
+                </div>
+              ) : loading.resolution ? (
+                <div className="text-center py-8 text-gray-500">
+                  Loading resolution times...
+                </div>
+              ) : (
+                <ResolutionTimeChart 
+                  data={resolutionTimes} 
+                  height={300}
+                  margin={{ top: 20, right: 30, left: 40, bottom: 40 }}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Tabs defaultValue="activity">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="activity">Recent Activity</TabsTrigger>
+            <TabsTrigger value="pending">Pending Approvals</TabsTrigger>
+          </TabsList>
+          <TabsContent value="activity" className="mt-6">
+            <RecentActivity />
+          </TabsContent>
+          <TabsContent value="pending" className="mt-6">
+            <PendingApprovals />
+          </TabsContent>
+        </Tabs>
       </div>
-
-      <DashboardStats 
-        stats={platformStats} 
-        loading={loading.stats} 
-        error={error.stats} 
-      />
-
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Error Distribution</CardTitle>
-            <CardDescription>Distribution of errors by programming language and framework</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {error.errors ? (
-              <div className="text-center py-8 text-red-500">
-                Failed to load error distribution data
-              </div>
-            ) : loading.errors ? (
-              <div className="text-center py-8 text-gray-500">
-                Loading error distribution...
-              </div>
-            ) : (
-              <ErrorDistributionChart 
-                data={errorDistribution} 
-                height={300}
-                margin={{ top: 20, right: 30, left: 40, bottom: 40 }}
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Resolution Time</CardTitle>
-            <CardDescription>Average time to resolve errors by category</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {error.resolution ? (
-              <div className="text-center py-8 text-red-500">
-                Failed to load resolution time data
-              </div>
-            ) : loading.resolution ? (
-              <div className="text-center py-8 text-gray-500">
-                Loading resolution times...
-              </div>
-            ) : (
-              <ResolutionTimeChart 
-                data={resolutionTimes} 
-                height={300}
-                margin={{ top: 20, right: 30, left: 40, bottom: 40 }}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="activity">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="activity">Recent Activity</TabsTrigger>
-          <TabsTrigger value="pending">Pending Approvals</TabsTrigger>
-        </TabsList>
-        <TabsContent value="activity" className="mt-6">
-          <RecentActivity />
-        </TabsContent>
-        <TabsContent value="pending" className="mt-6">
-          <PendingApprovals />
-        </TabsContent>
-      </Tabs>
-    </div>
+    </RouteGuard>
+    
   )
 }
